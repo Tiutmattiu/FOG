@@ -1,4 +1,12 @@
-<!DOCTYPE html> <html lang="zh-Hant"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>帕金森病問卷調查</title> <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"> </head> <body class="bg-gray-100 flex items-center justify-center min-h-screen"> <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-3xl"> <h1 class="text-2xl font-bold mb-4 text-center">帕金森病問卷調查</h1> <p class="mb-4">請填寫以下資料及問卷，所有問題均需回答。進度會自動保存，關閉網頁後可繼續填寫。完成後點擊「提交」以儲存答案。</p> <button id="loadProgress" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 mb-4">載入上次進度</button> <button id="clearProgress" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 mb-4">清除進度</button>
+<!DOCTYPE html> <html lang="zh-Hant"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>帕金森病問卷調查</title> <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+<style>
+  .bmi-result { padding: 8px; margin: 5px 0; border-radius: 4px; font-weight: bold; }
+  .bmi-underweight { background-color: #e3f2fd; color: #1565c0; }
+  .bmi-normal { background-color: #e8f5e8; color: #2e7d32; }
+  .bmi-overweight { background-color: #fff3e0; color: #ef6c00; }
+  .bmi-obese { background-color: #ffebee; color: #c62828; }
+</style>
+ </head> <body class="bg-gray-100 flex items-center justify-center min-h-screen"> <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-3xl"> <h1 class="text-2xl font-bold mb-4 text-center">帕金森病問卷調查</h1> <p class="mb-4">請填寫以下資料及問卷，所有問題均需回答。進度會自動保存，關閉網頁後可繼續填寫。完成後點擊「提交」以儲存答案。</p> <button id="loadProgress" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600 mb-4">載入上次進度</button> <button id="clearProgress" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 mb-4">清除進度</button>
 <h2 class="text-xl font-semibold mb-2">基本資料</h2>
 <form id="surveyForm" class="space-y-4">
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -191,7 +199,8 @@
           <label class="block">體重 (公斤)</label>
           <input type="number" name="fci18_weight" step="0.1" required min="0" class="w-full p-2 border rounded">
         </div>
-      </div>
+      </div> 
+      <div id="bmiResult" class="mt-2 p-2 rounded text-sm font-medium" style="display: none;">BMI: <span id="bmiValue">—</span></div>
       <label><input type="radio" name="fci18_obesity" value="是" required> 是</label>
       <label><input type="radio" name="fci18_obesity" value="否"> 否</label>
     </div>
@@ -675,6 +684,272 @@
       </div>
  <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">提交</button>
 </form>
-<button id="download" type="button" class="mt-4 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 hidden">下載答案 (CSV)</button>
-</div> <script type="text/javascript"> // Optional XLSX helper: hard-guard so it never crashes if XLSX is missing var gk_isXlsx = false; var gk_xlsxFileLookup = {}; var gk_fileData = {}; function filledCell(cell) { return cell !== '' && cell != null; } function loadFileData(filename) { try { if (gk_isXlsx && gk_xlsxFileLookup[filename] && typeof XLSX !== 'undefined') { var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' }); var firstSheetName = workbook.SheetNames[0]; var worksheet = workbook.Sheets[firstSheetName]; var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' }); var filteredData = jsonData.filter(row => row.some(filledCell)); var headerRowIndex = filteredData.findIndex((row, index) => row.filter(filledCell).length >= (filteredData[index + 1]?.filter(filledCell).length || 0) ); if (headerRowIndex === -1 || headerRowIndex > 25) headerRowIndex = 0; var csvSheet = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); return XLSX.utils.sheet_to_csv(csvSheet, { header: 1 }); } } catch (e) { console.error(e); } return gk_fileData[filename] || ""; } </script> <script> const form = document.getElementById('surveyForm'); const downloadBtn = document.getElementById('download'); const loadProgressBtn = document.getElementById('loadProgress'); const clearProgressBtn = document.getElementById('clearProgress'); const loadingDiv = document.getElementById('loading'); const videoIframe = document.getElementById('fogqVideo'); // Hide loading when iframe actually loads if (videoIframe) { videoIframe.addEventListener('load', () => { if (loadingDiv) loadingDiv.style.display = 'none'; }); } else { window.addEventListener('load', () => { if (loadingDiv) loadingDiv.style.display = 'none'; }); } let responses = []; try { responses = JSON.parse(localStorage.getItem('surveyResponses')) || []; } catch { responses = []; } // Save progress form.addEventListener('input', () => { const formData = new FormData(form); const progress = {}; for (const [key, value] of formData.entries()) progress[key] = value; localStorage.setItem('surveyProgress', JSON.stringify(progress)); }); // Load progress loadProgressBtn.addEventListener('click', () => { let progress = null; try { progress = JSON.parse(localStorage.getItem('surveyProgress')); } catch {} if (progress) { for (const [key, value] of Object.entries(progress)) { const inputs = form.querySelectorAll(`[name="${key}"]`); if (!inputs || inputs.length === 0) continue; if (inputs[0].type === 'radio' || inputs[0].type === 'checkbox') { const target = form.querySelector(`[name="${key}"][value="${value}"]`); if (target) target.checked = true; } else { inputs[0].value = value; } } alert('已載入上次進度！'); } else { alert('無保存的進度！'); } }); // Clear progress clearProgressBtn.addEventListener('click', () => { localStorage.removeItem('surveyProgress'); form.reset(); alert('進度已清除！'); }); // CSV escape function csvEscape(val) { if (val === null || val === undefined) return ''; const s = String(val); if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"'; return s; } form.addEventListener('submit', (e) => { e.preventDefault(); const fd = new FormData(form); const response = { id: responses.length + 1, name: fd.get('name'), age: fd.get('age'), diagnosisYear: fd.get('diagnosisYear'), educationYears: fd.get('educationYears'), dominantHand: fd.get('dominantHand'), implants: fd.get('implants'), wheelchair: fd.get('wheelchair'), medFirstTime: fd.get('medFirstTime'), medDuration: fd.get('medDuration'), medFrequency: fd.get('medFrequency'), training1: fd.get('training1'), training2: fd.get('training2'), training3: fd.get('training3'), // FCI fci1_arthritis: fd.get('fci1_arthritis'), fci2_osteoporosis: fd.get('fci2_osteoporosis'), fci3_asthma: fd.get('fci3_asthma'), fci4_copd: fd.get('fci4_copd'), fci5_angina: fd.get('fci5_angina'), fci6_heart_failure: fd.get('fci6_heart_failure'), fci7_heart_attack: fd.get('fci7_heart_attack'), fci8_neuro_disease: fd.get('fci8_neuro_disease'), fci10_peripheral_vascular: fd.get('fci10_peripheral_vascular'), fci11_diabetes: fd.get('fci11_diabetes'), fci12_gastro: fd.get('fci12_gastro'), fci16_hearing: fd.get('fci16_hearing'), fci17_disc_disease: fd.get('fci17_disc_disease'), fci18_height: fd.get('fci18_height'), fci18_weight: fd.get('fci18_weight'), fci18_obesity: fd.get('fci18_obesity'), fciTotal: (fd.get('fci1_arthritis') === '是') + (fd.get('fci2_osteoporosis') === '是') + (fd.get('fci3_asthma') === '是') + (fd.get('fci4_copd') === '是') + (fd.get('fci5_angina') === '是') + (fd.get('fci6_heart_failure') === '是') + (fd.get('fci7_heart_attack') === '是') + (fd.get('fci8_neuro_disease') === '是') + (fd.get('fci10_peripheral_vascular') === '是') + (fd.get('fci11_diabetes') === '是') + (fd.get('fci12_gastro') === '是') + (fd.get('fci16_hearing') === '是') + (fd.get('fci17_disc_disease') === '是') + (fd.get('fci18_obesity') === '是'), // HADS hads1: fd.get('hads1'), hads2: fd.get('hads2'), hads3: fd.get('hads3'), hads4: fd.get('hads4'), hads5: fd.get('hads5'), hads6: fd.get('hads6'), hads7: fd.get('hads7'), hads8: fd.get('hads8'), hads9: fd.get('hads9'), hads10: fd.get('hads10'), hads11: fd.get('hads11'), hads12: fd.get('hads12'), hads13: fd.get('hads13'), hads14: fd.get('hads14'), hadsAnxiety: ['hads1','hads3','hads5','hads7','hads9','hads11','hads13'] .reduce((s, k) => s + parseInt(fd.get(k), 10), 0), hadsDepression: ['hads2','hads4','hads6','hads8','hads10','hads12','hads14'] .reduce((s, k) => s + parseInt(fd.get(k), 10), 0), // PDQ 1..39 ...Object.fromEntries(Array.from({ length: 39 }, (_, i) => { const key = `pdq${i+1}`; return [key, fd.get(key)]; })), pdqTotal: Array.from({ length: 39 }, (_, i) => parseInt(fd.get(`pdq${i+1}`) || 0, 10)).reduce((a,b)=>a+b,0), // FOGQ 1..6 fogq1: fd.get('fogq1'), fogq2: fd.get('fogq2'), fogq3: fd.get('fogq3'), fogq4: fd.get('fogq4'), fogq5: fd.get('fogq5'), fogq6: fd.get('fogq6'), fogqTotal: Array.from({ length: 6 }, (_, i) => parseInt(fd.get(`fogq${i+1}`) || 0, 10)).reduce((a,b)=>a+b,0) }; responses.push(response); localStorage.setItem('surveyResponses', JSON.stringify(responses)); localStorage.removeItem('surveyProgress'); alert('問卷已提交！請點擊「下載答案 (CSV)」保存您的回答。'); downloadBtn.classList.remove('hidden'); form.reset(); }); // Download CSV downloadBtn.addEventListener('click', () => { const headers = [ '編號','姓名','年齡','診斷年數','受教育年數','慣用手','金屬植入物','輪椅使用', '首次服藥時間','藥效持續時間(小時)','每日服藥次數','訓練時段1','訓練時段2','訓練時段3', 'FCI1_關節炎','FCI2_骨質疏鬆','FCI3_哮喘','FCI4_COPD','FCI5_心絞痛','FCI6_心力衰竭', 'FCI7_心肌梗塞','FCI8_神經退行性疾病','FCI10_週邊血管疾病','FCI11_糖尿病', 'FCI12_上消化道疾病','FCI16_聽力障礙','FCI17_椎間盤退化','FCI18_身高(公尺)','FCI18_體重(公斤)','FCI18_肥胖','FCI總分', 'HADS1','HADS2','HADS3','HADS4','HADS5','HADS6','HADS7','HADS8','HADS9','HADS10','HADS11','HADS12','HADS13','HADS14','HADS_焦慮總分','HADS_抑鬱總分', ...Array.from({ length: 39 }, (_, i) => `PDQ${i+1}`), 'PDQ_總分', 'FOGQ1','FOGQ2','FOGQ3','FOGQ4','FOGQ5','FOGQ6','FOGQ_總分' ]; const rows = responses.map(r => [ r.id, r.name, r.age, r.diagnosisYear, r.educationYears, r.dominantHand, r.implants, r.wheelchair, r.medFirstTime, r.medDuration, r.medFrequency, r.training1, r.training2, r.training3, r.fci1_arthritis, r.fci2_osteoporosis, r.fci3_asthma, r.fci4_copd, r.fci5_angina, r.fci6_heart_failure, r.fci7_heart_attack, r.fci8_neuro_disease, r.fci10_peripheral_vascular, r.fci11_diabetes, r.fci12_gastro, r.fci16_hearing, r.fci17_disc_disease, r.fci18_height, r.fci18_weight, r.fci18_obesity, r.fciTotal, r.hads1, r.hads2, r.hads3, r.hads4, r.hads5, r.hads6, r.hads7, r.hads8, r.hads9, r.hads10, r.hads11, r.hads12, r.hads13, r.hads14, r.hadsAnxiety, r.hadsDepression, ...Array.from({ length: 39 }, (_, i) => r[`pdq${i+1}`]), r.pdqTotal, r.fogq1, r.fogq2, r.fogq3, r.fogq4, r.fogq5, r.fogq6, r.fogqTotal ]); const csv = [ headers.map(csvEscape).join(','), ...rows.map(row => row.map(csvEscape).join(',')) ].join('\n'); const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'parkinson_survey_responses.csv'; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); }); </script> </body> </html>
-     
+<button id="download" type="button" class="mt-4 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">下載答案 (CSV)</button>
+</div> <script>
+  // 設定：是否啟用 Google Sheets（留空則僅本地）
+  const SHEET_WEB_APP_URL = ''; // 若用，填入 https://script.google.com/macros/s/xxx/exec
+
+  // DOM 取得
+  const form = document.getElementById('surveyForm');
+  const downloadBtn = document.getElementById('download');
+  const loadProgressBtn = document.getElementById('loadProgress');
+  const clearProgressBtn = document.getElementById('clearProgress');
+  const loadingDiv = document.getElementById('loading');
+  const videoIframe = document.getElementById('fogqVideo');
+  const bmiResult = document.getElementById('bmiResult');
+  const bmiValue = document.getElementById('bmiValue');
+  const heightInput = form.querySelector('[name="fci18_height"]');
+  const weightInput = form.querySelector('[name="fci18_weight"]');
+  const obesityYes = form.querySelector('[name="fci18_obesity"][value="是"]');
+  const obesityNo = form.querySelector('[name="fci18_obesity"][value="否"]');
+
+  // iframe 載入後隱藏 loading
+  if (videoIframe && loadingDiv) {
+    videoIframe.addEventListener('load', () => { loadingDiv.style.display = 'none'; });
+  }
+
+  // 取已保存的 responses
+  let responses = [];
+  try { responses = JSON.parse(localStorage.getItem('surveyResponses')) || []; } catch { responses = []; }
+
+  // 保存進度
+  function saveProgress() {
+    const fd = new FormData(form);
+    const progress = {};
+    for (const [key, value] of fd.entries()) progress[key] = value;
+    localStorage.setItem('surveyProgress', JSON.stringify(progress));
+  }
+  form.addEventListener('input', saveProgress);
+  form.addEventListener('change', saveProgress);
+
+  // 載入進度
+  loadProgressBtn.addEventListener('click', () => {
+    let progress = null;
+    try { progress = JSON.parse(localStorage.getItem('surveyProgress')); } catch {}
+    if (!progress) { alert('無保存的進度！'); return; }
+    for (const [key, value] of Object.entries(progress)) {
+      const nodes = form.querySelectorAll(`[name="${key}"]`);
+      if (nodes.length === 0) continue;
+      if (nodes[0].type === 'radio' || nodes[0].type === 'checkbox') {
+        const target = form.querySelector(`[name="${key}"][value="${value}"]`);
+        if (target) target.checked = true;
+      } else {
+        nodes[0].value = value;
+      }
+    }
+    updateBMI();
+    alert('已載入上次進度！');
+  });
+
+  // 頁面載入時自動詢問載入進度
+  window.addEventListener('load', () => {
+    let progress = null;
+    try { progress = JSON.parse(localStorage.getItem('surveyProgress')); } catch {}
+    if (progress && Object.keys(progress).length > 0) {
+      if (confirm('檢測到未完成的問卷，是否載入上次進度？')) {
+        loadProgressBtn.click();
+      }
+    }
+    if (responses.length > 0) downloadBtn.classList.remove('hidden');
+  });
+
+  // 清除進度
+  clearProgressBtn.addEventListener('click', () => {
+    localStorage.removeItem('surveyProgress');
+    form.reset();
+    updateBMI();
+    alert('進度已清除！');
+  });
+
+  // BMI 更新（即時 + 顏色類別）
+  function updateBMI() {
+    const h = parseFloat(heightInput?.value || 0);
+    const w = parseFloat(weightInput?.value || 0);
+    if (bmiResult) bmiResult.style.display = 'none';
+    if (h <= 0 || w <= 0) return;
+
+    const bmi = w / Math.pow(h / 100, 2);
+    const rounded = bmi.toFixed(1);
+    let category = '', categoryClass = '';
+
+    if (bmi < 18.5) { category = '體重過輕'; categoryClass = 'bmi-underweight'; }
+    else if (bmi < 24) { category = '正常範圍'; categoryClass = 'bmi-normal'; }
+    else if (bmi < 27) { category = '過重'; categoryClass = 'bmi-overweight'; }
+    else if (bmi < 30) { category = '輕度肥胖'; categoryClass = 'bmi-overweight'; }
+    else if (bmi < 35) { category = '中度肥胖'; categoryClass = 'bmi-obese'; }
+    else { category = '重度肥胖'; categoryClass = 'bmi-obese'; }
+
+    if (bmiValue) bmiValue.textContent = `${rounded} - ${category}`;
+    if (bmiResult) {
+      bmiResult.className = `bmi-result ${categoryClass}`;
+      bmiResult.style.display = 'block';
+    }
+    if (bmi > 30) { if (obesityYes) obesityYes.checked = true; }
+    else { if (obesityNo) obesityNo.checked = true; }
+    saveProgress();
+  }
+  if (heightInput) heightInput.addEventListener('input', updateBMI);
+  if (weightInput) weightInput.addEventListener('input', updateBMI);
+
+  // CSV 轉義
+  function csvEscape(val) {
+    if (val == null) return '';
+    const s = String(val);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
+
+  // 打包 response
+  function buildResponse(fd) {
+    const fciTotal =
+      Number(fd.get('fci1_arthritis') === '是') +
+      Number(fd.get('fci2_osteoporosis') === '是') +
+      Number(fd.get('fci3_asthma') === '是') +
+      Number(fd.get('fci4_copd') === '是') +
+      Number(fd.get('fci5_angina') === '是') +
+      Number(fd.get('fci6_heart_failure') === '是') +
+      Number(fd.get('fci7_heart_attack') === '是') +
+      Number(fd.get('fci8_neuro_disease') === '是') +
+      Number(fd.get('fci10_peripheral_vascular') === '是') +
+      Number(fd.get('fci11_diabetes') === '是') +
+      Number(fd.get('fci12_gastro') === '是') +
+      Number(fd.get('fci16_hearing') === '是') +
+      Number(fd.get('fci17_disc_disease') === '是') +
+      Number(fd.get('fci18_obesity') === '是');
+
+    const hadsAnxiety = ['hads1','hads3','hads5','hads7','hads9','hads11','hads13']
+      .reduce((s,k)=>s+(parseInt(fd.get(k),10)||0),0);
+    const hadsDepression = ['hads2','hads4','hads6','hads8','hads10','hads12','hads14']
+      .reduce((s,k)=>s+(parseInt(fd.get(k),10)||0),0);
+
+    const resp = {
+      timestamp: new Date().toISOString(),
+      id: responses.length + 1,
+      name: fd.get('name'), // 建議移除，見隱私部分
+      age: fd.get('age'),
+      diagnosisYear: fd.get('diagnosisYear'),
+      educationYears: fd.get('educationYears'),
+      dominantHand: fd.get('dominantHand'),
+      implants: fd.get('implants'),
+      wheelchair: fd.get('wheelchair'),
+      medFirstTime: fd.get('medFirstTime'),
+      medDuration: fd.get('medDuration'),
+      medFrequency: fd.get('medFrequency'),
+      training1: fd.get('training1'),
+      training2: fd.get('training2'),
+      training3: fd.get('training3'),
+      fci1_arthritis: fd.get('fci1_arthritis'),
+      fci2_osteoporosis: fd.get('fci2_osteoporosis'),
+      fci3_asthma: fd.get('fci3_asthma'),
+      fci4_copd: fd.get('fci4_copd'),
+      fci5_angina: fd.get('fci5_angina'),
+      fci6_heart_failure: fd.get('fci6_heart_failure'),
+      fci7_heart_attack: fd.get('fci7_heart_attack'),
+      fci8_neuro_disease: fd.get('fci8_neuro_disease'),
+      fci10_peripheral_vascular: fd.get('fci10_peripheral_vascular'),
+      fci11_diabetes: fd.get('fci11_diabetes'),
+      fci12_gastro: fd.get('fci12_gastro'),
+      fci16_hearing: fd.get('fci16_hearing'),
+      fci17_disc_disease: fd.get('fci17_disc_disease'),
+      fci18_height: fd.get('fci18_height'),
+      fci18_weight: fd.get('fci18_weight'),
+      fci18_obesity: fd.get('fci18_obesity'),
+      fciTotal,
+      hads1: fd.get('hads1'),
+      hads2: fd.get('hads2'),
+      hads3: fd.get('hads3'),
+      hads4: fd.get('hads4'),
+      hads5: fd.get('hads5'),
+      hads6: fd.get('hads6'),
+      hads7: fd.get('hads7'),
+      hads8: fd.get('hads8'),
+      hads9: fd.get('hads9'),
+      hads10: fd.get('hads10'),
+      hads11: fd.get('hads11'),
+      hads12: fd.get('hads12'),
+      hads13: fd.get('hads13'),
+      hads14: fd.get('hads14'),
+      hadsAnxiety,
+      hadsDepression,
+      ...Object.fromEntries(Array.from({length:39},(_,i)=>[`pdq${i+1}`,fd.get(`pdq${i+1}`)])),
+      pdqTotal: Array.from({length:39},(_,i)=>parseInt(fd.get(`pdq${i+1}`)||0,10)).reduce((a,b)=>a+b,0),
+      fogq1: fd.get('fogq1'),
+      fogq2: fd.get('fogq2'),
+      fogq3: fd.get('fogq3'),
+      fogq4: fd.get('fogq4'),
+      fogq5: fd.get('fogq5'),
+      fogq6: fd.get('fogq6'),
+      fogqTotal: Array.from({length:6},(_,i)=>parseInt(fd.get(`fogq${i+1}`)||0,10)).reduce((a,b)=>a+b,0)
+    };
+    return resp;
+  }
+
+  // 送出
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    const response = buildResponse(fd);
+    responses.push(response);
+    try { localStorage.setItem('surveyResponses', JSON.stringify(responses)); } catch {
+      alert('保存失敗，可能是存儲空間不足。請下載現有數據後清除進度。');
+    }
+    localStorage.removeItem('surveyProgress');
+
+    if (SHEET_WEB_APP_URL) {
+      try {
+        await fetch(SHEET_WEB_APP_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(response)
+        });
+      } catch (err) {
+        console.warn('Google Sheets 提交失敗，數據已存本地。', err);
+        alert('Google Sheets 提交失敗，數據已存本地，請下載 CSV。');
+      }
+    }
+
+    alert('問卷已提交！請點擊「下載答案 (CSV)」保存，或稍後下載。');
+    downloadBtn.classList.remove('hidden');
+    form.reset();
+    updateBMI();
+  });
+
+  // 下載 CSV
+  downloadBtn.addEventListener('click', () => {
+    if (responses.length === 0) { alert('暫無數據可下載！'); return; }
+    const headers = [
+      '時間戳','編號','姓名','年齡','診斷年數','受教育年數','慣用手','金屬植入物','輪椅使用',
+      '首次服藥時間','藥效持續時間(小時)','每日服藥次數','訓練時段1','訓練時段2','訓練時段3',
+      'FCI1_關節炎','FCI2_骨質疏鬆','FCI3_哮喘','FCI4_COPD','FCI5_心絞痛','FCI6_心力衰竭',
+      'FCI7_心肌梗塞','FCI8_神經退行性疾病','FCI10_週邊血管疾病','FCI11_糖尿病',
+      'FCI12_上消化道疾病','FCI16_聽力障礙','FCI17_椎間盤退化','FCI18_身高(公分)','FCI18_體重(公斤)','FCI18_肥胖','FCI總分',
+      'HADS1','HADS2','HADS3','HADS4','HADS5','HADS6','HADS7','HADS8','HADS9','HADS10','HADS11','HADS12','HADS13','HADS14','HADS_焦慮總分','HADS_抑鬱總分',
+      ...Array.from({length:39},(_,i)=>`PDQ${i+1}`),'PDQ_總分',
+      'FOGQ1','FOGQ2','FOGQ3','FOGQ4','FOGQ5','FOGQ6','FOGQ_總分'
+    ];
+    const rows = responses.map(r => [
+      r.timestamp, r.id, r.name, r.age, r.diagnosisYear, r.educationYears, r.dominantHand, r.implants, r.wheelchair,
+      r.medFirstTime, r.medDuration, r.medFrequency, r.training1, r.training2, r.training3,
+      r.fci1_arthritis, r.fci2_osteoporosis, r.fci3_asthma, r.fci4_copd, r.fci5_angina, r.fci6_heart_failure,
+      r.fci7_heart_attack, r.fci8_neuro_disease, r.fci10_peripheral_vascular, r.fci11_diabetes,
+      r.fci12_gastro, r.fci16_hearing, r.fci17_disc_disease, r.fci18_height, r.fci18_weight, r.fci18_obesity, r.fciTotal,
+      r.hads1, r.hads2, r.hads3, r.hads4, r.hads5, r.hads6, r.hads7, r.hads8, r.hads9, r.hads10, r.hads11, r.hads12, r.hads13, r.hads14, r.hadsAnxiety, r.hadsDepression,
+      ...Array.from({length:39},(_,i)=>r[`pdq${i+1}`]), r.pdqTotal,
+      r.fogq1, r.fogq2, r.fogq3, r.fogq4, r.fogq5, r.fogq6, r.fogqTotal
+    ]);
+    const csv = '\uFEFF' + [headers.map(csvEscape).join(','), ...rows.map(row => row.map(csvEscape).join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `parkinson_survey_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  });
+
+  // 初始 BMI 顯示
+  updateBMI();
+</script>
+</body>
+</html>
