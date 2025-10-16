@@ -16,6 +16,7 @@
             color: #333;
             background-color: #f4f4f4;
             padding: 20px;
+            padding-top: 100px; /* 为固定按钮留出空间 */
         }
         .container {
             max-width: 1200px;
@@ -109,6 +110,12 @@
         .btn-danger:hover {
             background: #c0392b;
         }
+        .btn-warning {
+            background: #f39c12;
+        }
+        .btn-warning:hover {
+            background: #e67e22;
+        }
         .test-type-selector {
             text-align: center;
             margin-bottom: 30px;
@@ -191,12 +198,59 @@
             width: auto;
             margin-right: 10px;
         }
+        .timer-btn {
+            background: #9b59b6;
+            color: white;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 2px;
+        }
+        .timer-btn:hover {
+            background: #8e44ad;
+        }
+        .timer-btn.active {
+            background: #e74c3c;
+        }
+        .fixed-buttons {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        .instructions {
+            background: #e1f5fe;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
+    <!-- 固定按钮栏 -->
+    <div class="fixed-buttons">
+        <button type="button" class="btn btn-success" onclick="exportToCSV()">導出數據</button>
+        <button type="button" class="btn" onclick="saveToLocal()">保存到本地</button>
+        <button type="button" class="btn btn-danger" onclick="clearForm()">清除表單</button>
+    </div>
+
     <div class="container">
         <h1>帕金森評估數據收集系統</h1>
         
+        <div class="instructions">
+            <p><strong>使用說明：</strong> 填寫評估數據，點擊頂部「導出數據」可下載CSV文件，直接複製到Excel使用。</p>
+        </div>
+
         <div class="test-type-selector">
             <button class="btn test-type-btn" onclick="selectTestType('pre')">Pre Test</button>
             <button class="btn test-type-btn" onclick="selectTestType('post')">Post Test</button>
@@ -229,9 +283,15 @@
                         <input type="text" id="tester" name="tester" required>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label for="moca">MOCA 分數 (0-30)</label>
-                    <input type="number" id="moca" name="moca" min="0" max="30">
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="legLength">腿長（米）</label>
+                        <input type="number" id="legLength" name="legLength" step="0.01" min="0" placeholder="請輸入腿長">
+                    </div>
+                    <div class="form-group">
+                        <label for="moca">MOCA 分數 (0-30)</label>
+                        <input type="number" id="moca" name="moca" min="0" max="30">
+                    </div>
                 </div>
             </div>
 
@@ -351,7 +411,7 @@
                     <input type="number" id="updrs3c1" name="updrs3c1" placeholder="分鐘">
                 </div>
 
-                <!-- UPDRS-3 評分項目 -->
+                <!-- 由于UPDRS-3项目太多，这里只显示部分，实际使用时需要添加所有项目 -->
                 <div class="form-group">
                     <label for="updrs3_1">3.1 言語 (0-4)</label>
                     <select id="updrs3_1" name="updrs3_1">
@@ -807,14 +867,17 @@
                     <div class="form-group">
                         <label for="tug1">第一次 TUG (秒)</label>
                         <input type="number" id="tug1" name="tug1" step="0.1" placeholder="第一次時間">
+                        <button type="button" class="timer-btn" onclick="startTimer('tug1', this)">開始計時</button>
                     </div>
                     <div class="form-group">
                         <label for="tug2">第二次 TUG (秒)</label>
                         <input type="number" id="tug2" name="tug2" step="0.1" placeholder="第二次時間">
+                        <button type="button" class="timer-btn" onclick="startTimer('tug2', this)">開始計時</button>
                     </div>
                     <div class="form-group">
                         <label for="tug3">第三次 TUG (秒)</label>
                         <input type="number" id="tug3" name="tug3" step="0.1" placeholder="第三次時間">
+                        <button type="button" class="timer-btn" onclick="startTimer('tug3', this)">開始計時</button>
                     </div>
                 </div>
                 <button type="button" class="btn" onclick="calculateTUGAverage()">計算TUG平均時間</button>
@@ -833,6 +896,7 @@
                     <div>
                         <label for="walk1_time">第一次時間 (秒)</label>
                         <input type="number" id="walk1_time" name="walk1_time" step="0.1">
+                        <button type="button" class="timer-btn" onclick="startTimer('walk1_time', this)">開始計時</button>
                     </div>
                     <div>
                         <label for="walk1_steps">第一次步數</label>
@@ -844,6 +908,7 @@
                     <div>
                         <label for="walk2_time">第二次時間 (秒)</label>
                         <input type="number" id="walk2_time" name="walk2_time" step="0.1">
+                        <button type="button" class="timer-btn" onclick="startTimer('walk2_time', this)">開始計時</button>
                     </div>
                     <div>
                         <label for="walk2_steps">第二次步數</label>
@@ -855,6 +920,7 @@
                     <div>
                         <label for="walk3_time">第三次時間 (秒)</label>
                         <input type="number" id="walk3_time" name="walk3_time" step="0.1">
+                        <button type="button" class="timer-btn" onclick="startTimer('walk3_time', this)">開始計時</button>
                     </div>
                     <div>
                         <label for="walk3_steps">第三次步數</label>
@@ -881,186 +947,364 @@
                     </div>
                 </div>
             </div>
-
-            <!-- 提交按鈕 -->
-            <div style="text-align: center; margin-top: 30px;">
-                <button type="button" class="btn btn-success" onclick="saveData()" style="padding: 15px 30px; font-size: 18px;">
-                    保存數據
-                </button>
-                <button type="button" class="btn" onclick="saveToLocal()" style="margin-left: 15px;">
-                    保存到本地
-                </button>
-                <button type="button" class="btn btn-danger" onclick="clearForm()" style="margin-left: 15px;">
-                    清除表單
-                </button>
-            </div>
         </form>
 
         <div id="statusMessage" class="status-message hidden"></div>
     </div>
 
-    <script>
-        // 替換為你的Google Apps Script Web App URL
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyr7CG7XMOedFnPoZG7ZtRLVFaG3O_xYnSbya-CXlnuaYrjxJK8JgdpcfqM5UWU2SwpUg/exec';
+```html
+<script>
+    // 计时器变量
+    let activeTimer = null;
+    let timerStartTime = null;
+    let timerFieldId = null;
+    let timerButton = null;
+    
+    // 设置默认日期为今天
+    document.getElementById('testDate').valueAsDate = new Date();
+    
+    // 选择测试类型
+    function selectTestType(type) {
+        document.getElementById('testType').value = type;
+        const parqSection = document.getElementById('parqSection');
+        const medicationSection = document.getElementById('medicationSection');
+        
+        if (type === 'post') {
+            parqSection.style.display = 'none';
+            medicationSection.style.display = 'none';
+        } else {
+            parqSection.style.display = 'block';
+            medicationSection.style.display = 'block';
+        }
+        
+        // 更新按钮样式
+        document.querySelectorAll('.test-type-btn').forEach(btn => {
+            btn.classList.remove('btn-success');
+        });
+        event.target.classList.add('btn-success');
+    }
+    
+    // 计时器功能
+    function startTimer(fieldId, button) {
+        // 如果已经有活跃的计时器，先停止它
+        if (activeTimer) {
+            stopTimer();
+        }
+        
+        // 开始新的计时器
+        timerFieldId = fieldId;
+        timerButton = button;
+        timerStartTime = new Date().getTime();
+        
+        // 更新按钮状态
+        button.textContent = '停止計時';
+        button.classList.add('active');
+        
+        // 开始计时
+        activeTimer = setInterval(updateTimerDisplay, 100);
+    }
+    
+    function stopTimer() {
+        if (!activeTimer) return;
+        
+        // 停止计时器
+        clearInterval(activeTimer);
+        activeTimer = null;
+        
+        // 计算经过的时间
+        const endTime = new Date().getTime();
+        const elapsedTime = (endTime - timerStartTime) / 1000; // 转换为秒
+        
+        // 更新输入字段
+        document.getElementById(timerFieldId).value = elapsedTime.toFixed(1);
+        
+        // 重置按钮状态
+        if (timerButton) {
+            timerButton.textContent = '開始計時';
+            timerButton.classList.remove('active');
+        }
+        
+        // 重置变量
+        timerFieldId = null;
+        timerButton = null;
+        timerStartTime = null;
+    }
+    
+    function updateTimerDisplay() {
+        if (!timerStartTime) return;
+        
+        const currentTime = new Date().getTime();
+        const elapsedTime = (currentTime - timerStartTime) / 1000;
+        
+        // 可以在这里添加实时显示，但为了简化，我们只在停止时更新输入字段
+    }
+    
+    // 计算TUG平均时间
+    function calculateTUGAverage() {
+        const tug1 = parseFloat(document.getElementById('tug1').value) || 0;
+        const tug2 = parseFloat(document.getElementById('tug2').value) || 0;
+        const tug3 = parseFloat(document.getElementById('tug3').value) || 0;
 
-        function selectTestType(type) {
-            document.getElementById('testType').value = type;
-            const parqSection = document.getElementById('parqSection');
-            const medicationSection = document.getElementById('medicationSection');
-            
-            if (type === 'post') {
-                parqSection.style.display = 'none';
-                medicationSection.style.display = 'none';
-            } else {
-                parqSection.style.display = 'block';
-                medicationSection.style.display = 'block';
+        // 过滤掉0值，只计算有输入的值
+        const values = [tug1, tug2, tug3].filter(value => value > 0);
+        
+        if (values.length === 0) {
+            alert('請至少輸入一次TUG測試時間');
+            return;
+        }
+
+        // 计算平均值
+        const avg = values.reduce((a, b) => a + b, 0) / values.length;
+        document.getElementById('tug_avg').value = avg.toFixed(1);
+        
+        showMessage(`TUG平均時間計算完成: ${avg.toFixed(1)}秒`, true);
+    }
+    
+    // 计算步行指标
+    function calculateWalkMetrics() {
+        const distance = parseFloat(document.getElementById('walkDistance').value) || 0;
+        const times = [
+            parseFloat(document.getElementById('walk1_time').value) || 0,
+            parseFloat(document.getElementById('walk2_time').value) || 0,
+            parseFloat(document.getElementById('walk3_time').value) || 0
+        ];
+        const steps = [
+            parseInt(document.getElementById('walk1_steps').value) || 0,
+            parseInt(document.getElementById('walk2_steps').value) || 0,
+            parseInt(document.getElementById('walk3_steps').value) || 0
+        ];
+
+        // 过滤掉0值
+        const validTimes = times.filter(t => t > 0);
+        const validSteps = steps.filter(s => s > 0);
+
+        if (validTimes.length === 0 || validSteps.length === 0 || distance === 0) {
+            alert('請先填寫步行距離和至少一次的時間和步數');
+            return;
+        }
+
+        // 计算平均值
+        const avgTime = validTimes.reduce((a, b) => a + b, 0) / validTimes.length;
+        const avgSteps = validSteps.reduce((a, b) => a + b, 0) / validSteps.length;
+
+        // 计算指标
+        const avgSpeed = distance / avgTime;
+        const avgStepLength = distance / avgSteps;
+        const avgCadence = (avgSteps / avgTime) * 60;
+
+        // 更新表单
+        document.getElementById('avgSpeed').value = avgSpeed.toFixed(3);
+        document.getElementById('avgStepLength').value = avgStepLength.toFixed(3);
+        document.getElementById('avgCadence').value = avgCadence.toFixed(1);
+        
+        showMessage('步行指標計算完成', true);
+    }
+    
+    // 导出为CSV
+    function exportToCSV() {
+        // 检查必填字段
+        const requiredFields = ['id', 'name', 'testDate', 'tester'];
+        let missingFields = [];
+        
+        requiredFields.forEach(field => {
+            const element = document.getElementById(field);
+            if (!element.value) {
+                missingFields.push(element.previousElementSibling.textContent.trim());
             }
-            
-            // 更新按鈕樣式
-            document.querySelectorAll('.test-type-btn').forEach(btn => {
-                btn.classList.remove('btn-success');
-            });
-            event.target.classList.add('btn-success');
+        });
+        
+        if (missingFields.length > 0) {
+            showMessage(`以下必填字段未填寫: ${missingFields.join(', ')}，但您仍然可以導出數據`, 'warning');
         }
-
-        function calculateTUGAverage() {
-            const tug1 = parseFloat(document.getElementById('tug1').value) || 0;
-            const tug2 = parseFloat(document.getElementById('tug2').value) || 0;
-            const tug3 = parseFloat(document.getElementById('tug3').value) || 0;
-
-            // 過濾掉0值，只計算有輸入的值
-            const values = [tug1, tug2, tug3].filter(value => value > 0);
-            
-            if (values.length === 0) {
-                alert('請至少輸入一次TUG測試時間');
-                return;
-            }
-
-            // 計算平均值
-            const avg = values.reduce((a, b) => a + b, 0) / values.length;
-            document.getElementById('tug_avg').value = avg.toFixed(1);
-            
-            showMessage(`TUG平均時間計算完成: ${avg.toFixed(1)}秒`, true);
+        
+        // 收集表单数据
+        const form = document.getElementById('assessmentForm');
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        // 处理复选框值
+        data.updrs3b_on = form.querySelector('input[name="updrs3b_on"]:checked') ? '是' : '';
+        data.updrs3b_off = form.querySelector('input[name="updrs3b_off"]:checked') ? '是' : '';
+        
+        // 创建CSV内容
+        let csvContent = "帕金森評估數據\n\n";
+        
+        // 基本信息部分
+        csvContent += "基本信息\n";
+        csvContent += `"編號","${data.id || ''}"\n`;
+        csvContent += `"姓名","${data.name || ''}"\n`;
+        csvContent += `"測試日期","${data.testDate || ''}"\n`;
+        csvContent += `"測試員","${data.tester || ''}"\n`;
+        csvContent += `"腿長(米)","${data.legLength || ''}"\n`;
+        csvContent += `"MOCA分數","${data.moca || ''}"\n`;
+        csvContent += `"測試類型","${data.testType || ''}"\n\n`;
+        
+        // PAR-Q部分
+        csvContent += "PAR-Q問卷\n";
+        csvContent += `"醫生曾否說過你的心臟有問題","${data.parq1 || ''}"\n`;
+        csvContent += `"你進行體能活動時會否感到胸口痛","${data.parq2 || ''}"\n`;
+        csvContent += `"過去一個月內曾否在沒有進行體能活動時也感到胸口痛","${data.parq3 || ''}"\n`;
+        csvContent += `"你曾否因感到暈眩而失去平衡或失去知覺","${data.parq4 || ''}"\n`;
+        csvContent += `"你的骨骼或關節是否有毛病且會因改變體能活動而惡化","${data.parq5 || ''}"\n`;
+        csvContent += `"醫生現時是否有開血壓或心臟藥物","${data.parq6 || ''}"\n`;
+        csvContent += `"是否有其他理由令你不應進行體能活動","${data.parq7 || ''}"\n`;
+        csvContent += `"同意確認","${data.parqAgreement || ''}"\n\n`;
+        
+        // 用药详情部分
+        if (data.testType === 'pre') {
+            csvContent += "用藥詳情\n";
+            csvContent += `"用藥詳情","${data.medicationDetails || ''}"\n`;
+            csvContent += `"總LEDD量","${data.totalLEDD || ''}"\n\n`;
         }
-
-        function calculateWalkMetrics() {
-            const distance = parseFloat(document.getElementById('walkDistance').value) || 0;
-            const times = [
-                parseFloat(document.getElementById('walk1_time').value) || 0,
-                parseFloat(document.getElementById('walk2_time').value) || 0,
-                parseFloat(document.getElementById('walk3_time').value) || 0
-            ];
-            const steps = [
-                parseInt(document.getElementById('walk1_steps').value) || 0,
-                parseInt(document.getElementById('walk2_steps').value) || 0,
-                parseInt(document.getElementById('walk3_steps').value) || 0
-            ];
-
-            // 過濾掉0值
-            const validTimes = times.filter(t => t > 0);
-            const validSteps = steps.filter(s => s > 0);
-
-            if (validTimes.length === 0 || validSteps.length === 0 || distance === 0) {
-                alert('請先填寫步行距離和至少一次的時間和步數');
-                return;
-            }
-
-            // 計算平均值
-            const avgTime = validTimes.reduce((a, b) => a + b, 0) / validTimes.length;
-            const avgSteps = validSteps.reduce((a, b) => a + b, 0) / validSteps.length;
-
-            // 計算指標
-            const avgSpeed = distance / avgTime;
-            const avgStepLength = distance / avgSteps;
-            const avgCadence = (avgSteps / avgTime) * 60;
-
-            // 更新表單
-            document.getElementById('avgSpeed').value = avgSpeed.toFixed(3);
-            document.getElementById('avgStepLength').value = avgStepLength.toFixed(3);
-            document.getElementById('avgCadence').value = avgCadence.toFixed(1);
+        
+        // UPDRS-3部分
+        csvContent += "UPDRS-3評估\n";
+        csvContent += `"是否正接受巴金森病藥物治療","${data.updrs3a || ''}"\n`;
+        csvContent += `"來電狀態","${data.updrs3b_on || ''}"\n`;
+        csvContent += `"停電狀態","${data.updrs3b_off || ''}"\n`;
+        csvContent += `"是否有服用左多巴藥物","${data.updrs3c || ''}"\n`;
+        csvContent += `"距離最後一次服用左多巴藥物(分鐘)","${data.updrs3c1 || ''}"\n`;
+        csvContent += `"言語","${data.updrs3_1 || ''}"\n`;
+        csvContent += `"面部表情","${data.updrs3_2 || ''}"\n`;
+        csvContent += `"僵硬(脖子)","${data.updrs3_3a || ''}"\n`;
+        csvContent += `"僵硬(右上肢)","${data.updrs3_3b || ''}"\n`;
+        csvContent += `"僵硬(左上肢)","${data.updrs3_3c || ''}"\n`;
+        csvContent += `"僵硬(右下肢)","${data.updrs3_3d || ''}"\n`;
+        csvContent += `"僵硬(左下肢)","${data.updrs3_3e || ''}"\n`;
+        csvContent += `"手指拍打(右)","${data.updrs3_4a || ''}"\n`;
+        csvContent += `"手指拍打(左)","${data.updrs3_4b || ''}"\n`;
+        csvContent += `"手掌運動(右)","${data.updrs3_5a || ''}"\n`;
+        csvContent += `"手掌運動(左)","${data.updrs3_5b || ''}"\n`;
+        csvContent += `"前臂迴旋運動(右)","${data.updrs3_6a || ''}"\n`;
+        csvContent += `"前臂迴旋運動(左)","${data.updrs3_6b || ''}"\n`;
+        csvContent += `"腳趾拍地運動(右)","${data.updrs3_7a || ''}"\n`;
+        csvContent += `"腳趾拍地運動(左)","${data.updrs3_7b || ''}"\n`;
+        csvContent += `"兩腳靈敏度測試(右)","${data.updrs3_8a || ''}"\n`;
+        csvContent += `"兩腳靈敏度測試(左)","${data.updrs3_8b || ''}"\n`;
+        csvContent += `"從椅子上站起來","${data.updrs3_9 || ''}"\n`;
+        csvContent += `"步態","${data.updrs3_10 || ''}"\n`;
+        csvContent += `"步態凍結的評估","${data.updrs3_11 || ''}"\n`;
+        csvContent += `"姿勢平穩度","${data.updrs3_12 || ''}"\n`;
+        csvContent += `"姿勢","${data.updrs3_13 || ''}"\n`;
+        csvContent += `"全身自發性的動作評估","${data.updrs3_14 || ''}"\n`;
+        csvContent += `"雙手姿態型顫抖(右)","${data.updrs3_15a || ''}"\n`;
+        csvContent += `"雙手姿態型顫抖(左)","${data.updrs3_15b || ''}"\n`;
+        csvContent += `"雙手動作型顫抖(右)","${data.updrs3_16a || ''}"\n`;
+        csvContent += `"雙手動作型顫抖(左)","${data.updrs3_16b || ''}"\n`;
+        csvContent += `"靜止型顫抖幅度(右上肢)","${data.updrs3_17a || ''}"\n`;
+        csvContent += `"靜止型顫抖幅度(左上肢)","${data.updrs3_17b || ''}"\n`;
+        csvContent += `"靜止型顫抖幅度(右下肢)","${data.updrs3_17c || ''}"\n`;
+        csvContent += `"靜止型顫抖幅度(左下肢)","${data.updrs3_17d || ''}"\n`;
+        csvContent += `"靜止型顫抖幅度(嘴唇/下巴)","${data.updrs3_17e || ''}"\n`;
+        csvContent += `"靜止型顫抖持續性","${data.updrs3_18 || ''}"\n`;
+        csvContent += `"異動症是否出現","${data.updrsA || ''}"\n`;
+        csvContent += `"異動症是否干擾檢查","${data.updrsB || ''}"\n\n`;
+        
+        // 其他评估部分
+        csvContent += "其他評估\n";
+        csvContent += `"H&Y分期","${data.hyStage || ''}"\n\n`;
+        
+        // TUG测试部分
+        csvContent += "TUG測試\n";
+        csvContent += `"第一次TUG(秒)","${data.tug1 || ''}"\n`;
+        csvContent += `"第二次TUG(秒)","${data.tug2 || ''}"\n`;
+        csvContent += `"第三次TUG(秒)","${data.tug3 || ''}"\n`;
+        csvContent += `"TUG平均時間(秒)","${data.tug_avg || ''}"\n\n`;
+        
+        // 步行测试部分
+        csvContent += "步行測試\n";
+        csvContent += `"步行距離(米)","${data.walkDistance || ''}"\n`;
+        csvContent += `"第一次時間(秒)","${data.walk1_time || ''}"\n`;
+        csvContent += `"第一次步數","${data.walk1_steps || ''}"\n`;
+        csvContent += `"第二次時間(秒)","${data.walk2_time || ''}"\n`;
+        csvContent += `"第二次步數","${data.walk2_steps || ''}"\n`;
+        csvContent += `"第三次時間(秒)","${data.walk3_time || ''}"\n`;
+        csvContent += `"第三次步數","${data.walk3_steps || ''}"\n`;
+        csvContent += `"平均速度(米/秒)","${data.avgSpeed || ''}"\n`;
+        csvContent += `"平均步距(米)","${data.avgStepLength || ''}"\n`;
+        csvContent += `"平均步頻(步/分鐘)","${data.avgCadence || ''}"\n`;
+        
+        // 创建下载链接
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `帕金森評估_${data.id || '未知'}_${data.testDate || new Date().toISOString().slice(0,10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showMessage('數據已導出為CSV文件', true);
+    }
+    
+    // 保存到本地
+    function saveToLocal() {
+        const form = document.getElementById('assessmentForm');
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        
+        // 添加时间戳
+        data.localSaveTime = new Date().toISOString();
+        
+        const blob = new Blob([JSON.stringify(data, null, 2)], { 
+            type: 'application/json' 
+        });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `parkinson_data_${data.id || 'unknown'}_${new Date().getTime()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        showMessage('數據已保存到本地文件', true);
+    }
+    
+    // 清除表单
+    function clearForm() {
+        if (confirm('確定要清除所有表單數據嗎？')) {
+            document.getElementById('assessmentForm').reset();
+            // 清除计算字段
+            document.getElementById('tug_avg').value = '';
+            document.getElementById('avgSpeed').value = '';
+            document.getElementById('avgStepLength').value = '';
+            document.getElementById('avgCadence').value = '';
             
-            showMessage('步行指標計算完成', true);
+            // 设置默认日期为今天
+            document.getElementById('testDate').valueAsDate = new Date();
+            
+            showMessage('表單已清除', true);
         }
-
-        function showMessage(message, isSuccess) {
-            const statusDiv = document.getElementById('statusMessage');
-            statusDiv.textContent = message;
-            statusDiv.className = `status-message ${isSuccess ? 'success' : 'error'}`;
-            statusDiv.classList.remove('hidden');
-            
-            setTimeout(() => {
-                statusDiv.classList.add('hidden');
-            }, 5000);
+    }
+    
+    // 显示消息
+    function showMessage(message, isSuccess) {
+        const statusDiv = document.getElementById('statusMessage');
+        statusDiv.textContent = message;
+        
+        if (isSuccess === true) {
+            statusDiv.className = 'status-message success';
+        } else if (isSuccess === 'warning') {
+            statusDiv.className = 'status-message warning';
+        } else {
+            statusDiv.className = 'status-message error';
         }
-
-        async function saveData() {
-            const form = document.getElementById('assessmentForm');
-            const formData = new FormData(form);
-            const data = Object.fromEntries(formData.entries());
-            
-            // 處理複選框值
-            data.updrs3b_on = form.querySelector('input[name="updrs3b_on"]:checked') ? '是' : '';
-            data.updrs3b_off = form.querySelector('input[name="updrs3b_off"]:checked') ? '是' : '';
-
-            try {
-                const response = await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(data)
-                });
-
-                const result = await response.json();
-                
-                if (result.ok) {
-                    showMessage('數據保存成功！', true);
-                } else {
-                    showMessage('保存失敗: ' + result.error, false);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showMessage('網絡錯誤，請檢查連接', false);
-            }
+        
+        statusDiv.classList.remove('hidden');
+        
+        setTimeout(() => {
+            statusDiv.classList.add('hidden');
+        }, 5000);
+    }
+    
+    // 页面卸载前停止所有计时器
+    window.addEventListener('beforeunload', function() {
+        if (activeTimer) {
+            stopTimer();
         }
+    });
+</script>
 
-        function saveToLocal() {
-            const form = document.getElementById('assessmentForm');
-            const formData = new FormData(form);
-            const data = Object.fromEntries(formData.entries());
-            
-            // 添加時間戳
-            data.localSaveTime = new Date().toISOString();
-            
-            const blob = new Blob([JSON.stringify(data, null, 2)], { 
-                type: 'application/json' 
-            });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `parkinson_data_${data.id || 'unknown'}_${new Date().getTime()}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            showMessage('數據已保存到本地文件', true);
-        }
-
-        function clearForm() {
-            if (confirm('確定要清除所有表單數據嗎？')) {
-                document.getElementById('assessmentForm').reset();
-                // 清除計算字段
-                document.getElementById('tug_avg').value = '';
-                document.getElementById('avgSpeed').value = '';
-                document.getElementById('avgStepLength').value = '';
-                document.getElementById('avgCadence').value = '';
-                showMessage('表單已清除', true);
-            }
-        }
-
-        // 設置默認日期為今天
-        document.getElementById('testDate').valueAsDate = new Date();
-    </script>
 </body>
 </html>
