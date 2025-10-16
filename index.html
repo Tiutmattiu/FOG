@@ -883,34 +883,59 @@
     return resp;
   }
 
-  // 送出
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fd = new FormData(form);
-    const response = buildResponse(fd);
-    responses.push(response);
-    try { localStorage.setItem('surveyResponses', JSON.stringify(responses)); } catch {
-      alert('保存失敗，可能是存儲空間不足。請下載現有數據後清除進度。');
-    }
-    localStorage.removeItem('surveyProgress');
+  // 送出 - 修复版本
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  // 构建数据
+  const fd = new FormData(form);
+  const response = buildResponse(fd);
+  
+  // 保存到本地存储
+  responses.push(response);
+  try { 
+    localStorage.setItem('surveyResponses', JSON.stringify(responses)); 
+  } catch {
+    alert('保存失敗，可能是存儲空間不足。請下載現有數據後清除進度。');
+  }
+  localStorage.removeItem('surveyProgress');
 
-    if (SHEET_WEB_APP_URL) {
-      try {
-        await fetch(SHEET_WEB_APP_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(response)
-        });
-      } catch (err) {
-        console.warn('Google Sheets 提交失敗，數據已存本地。', err);
-        alert('Google Sheets 提交失敗，數據已存本地，請下載 CSV。');
+  // 发送到 Google Sheets
+  if (SHEET_WEB_APP_URL) {
+    try {
+      console.log('正在发送数据到 Google Sheets:', response);
+      
+      const fetchResponse = await fetch(SHEET_WEB_APP_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(response)
+      });
+      
+      // 检查 HTTP 状态
+      if (!fetchResponse.ok) {
+        throw new Error(`HTTP 错误! 状态: ${fetchResponse.status}`);
       }
+      
+      // 解析 JSON 响应
+      const result = await fetchResponse.json();
+      console.log('Google Sheets 响应:', result);
+      
+      if (result.ok) {
+        console.log('✅ 数据成功保存到 Google Sheets');
+      } else {
+        throw new Error(result.error || '服务器返回未知错误');
+      }
+      
+    } catch (err) {
+      console.error('❌ Google Sheets 提交失败:', err);
+      alert('Google Sheets 提交失敗，數據已存本地，請下載 CSV。錯誤: ' + err.message);
     }
+  }
 
-    alert('問卷已提交！請點擊「下載答案 (CSV)」保存，或稍後下載。');
-    downloadBtn.classList.remove('hidden');
-    form.reset();
-    updateBMI();
+  alert('問卷已提交！請點擊「下載答案 (CSV)」保存，或稍後下載。');
+  downloadBtn.classList.remove('hidden');
+  form.reset();
+  updateBMI();
   });
 
   // 下載 CSV
