@@ -687,7 +687,7 @@
 <button id="download" type="button" class="mt-4 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">下載答案 (CSV)</button>
 </div> <script>
   // 設定：是否啟用 Google Sheets（留空則僅本地）
-  const SHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbweqAQYDjGglOCXHeXs4EyGsvF9Zatvune7P4gaYhzC4yTahdk1Jbu4e5KEl3HwFBMQVA/exec'; // 若用，填入 https://script.google.com/macros/s/xxx/exec
+  const SHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbznrm6mCYTnmTdHap9IigMAcS9nED91uPWXx3Ya0BdCZ2e6XIiocgtQ-66ktCdi3RB9cg/exec'; // 若用，填入 https://script.google.com/macros/s/xxx/exec
 
   // DOM 取得
   const form = document.getElementById('surveyForm');
@@ -883,60 +883,103 @@
     return resp;
   }
 
-  // 送出 - 修复版本
+// 送出 - 使用 JSONP 绕过 CORS
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   
-  // 构建数据
   const fd = new FormData(form);
   const response = buildResponse(fd);
+  
+  console.log('准备提交数据:', response);
   
   // 保存到本地存储
   responses.push(response);
   try { 
     localStorage.setItem('surveyResponses', JSON.stringify(responses)); 
+    console.log('✅ 本地存储成功');
   } catch {
     alert('保存失敗，可能是存儲空間不足。請下載現有數據後清除進度。');
   }
   localStorage.removeItem('surveyProgress');
 
-  // 发送到 Google Sheets
   if (SHEET_WEB_APP_URL) {
-    try {
-      console.log('正在发送数据到 Google Sheets:', response);
-      
-      const fetchResponse = await fetch(SHEET_WEB_APP_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(response)
-      });
-      
-      // 检查 HTTP 状态
-      if (!fetchResponse.ok) {
-        throw new Error(`HTTP 错误! 状态: ${fetchResponse.status}`);
-      }
-      
-      // 解析 JSON 响应
-      const result = await fetchResponse.json();
-      console.log('Google Sheets 响应:', result);
-      
-      if (result.ok) {
-        console.log('✅ 数据成功保存到 Google Sheets');
-      } else {
-        throw new Error(result.error || '服务器返回未知错误');
-      }
-      
-    } catch (err) {
-      console.error('❌ Google Sheets 提交失败:', err);
-      alert('Google Sheets 提交失敗，數據已存本地，請下載 CSV。錯誤: ' + err.message);
+    // 使用 JSONP 方式发送数据
+    console.log('🔄 开始通过 JSONP 提交到 Google Sheets...');
+    const success = await submitViaJSONP(response);
+    
+    if (success) {
+      console.log('✅ 数据成功提交到 Google Sheets');
+      alert('問卷已提交到 Google Sheets！請點擊「下載答案 (CSV)」保存備份。');
+    } else {
+      console.log('⚠️ 数据仅保存在本地');
+      alert('問卷已提交（僅本地保存），云端同步失败。請點擊「下載答案 (CSV)」保存數據。');
     }
+  } else {
+    alert('問卷已提交（僅本地保存）！請點擊「下載答案 (CSV)」保存。');
   }
 
-  alert('問卷已提交！請點擊「下載答案 (CSV)」保存，或稍後下載。');
   downloadBtn.classList.remove('hidden');
   form.reset();
   updateBMI();
+});
+
+// JSONP 提交函数
+function submitViaJSONP(data) {
+  return new Promise((resolve) => {
+    const callbackName = 'jsonpCallback_' + Date.now();
+    const script = document.createElement('script');
+    
+    // 构建 URL - 将数据作为查询参数传递
+    const params = new URLSearchParams();
+    params.append('callback', callbackName);
+    params.append('data', JSON.stringify(data));
+    
+    script.src = SHEET_WEB_APP_URL + '?' + params.toString();
+    console.log('JSONP 请求 URL:', script.src);
+    
+    // 设置全局回调函数
+    window[callbackName] = function(response) {
+      console.log('JSONP 响应:', response);
+      if (response && response.ok) {
+        console.log('✅ JSONP 提交成功');
+        resolve(true);
+      } else {
+        console.warn('❌ JSONP 提交失败:', response);
+        resolve(false);
+      }
+      
+      // 清理
+      delete window[callbackName];
+      if (script.parentNode) {
+        document.head.removeChild(script);
+      }
+    };
+    
+    // 添加错误处理
+    script.onerror = function() {
+      console.error('❌ JSONP 请求失败');
+      delete window[callbackName];
+      if (script.parentNode) {
+        document.head.removeChild(script);
+      }
+      resolve(false);
+    };
+    
+    document.head.appendChild(script);
+    
+    // 设置超时处理
+    setTimeout(() => {
+      if (window[callbackName]) {
+        console.warn('⚠️ JSONP 请求超时');
+        delete window[callbackName];
+        if (script.parentNode) {
+          document.head.removeChild(script);
+        }
+        resolve(false);
+      }
+    }, 10000); // 10秒超时
   });
+ }
 
   // 下載 CSV
   downloadBtn.addEventListener('click', () => {
