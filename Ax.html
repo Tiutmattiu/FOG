@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>帕金森評估數據收集系統</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: 'Microsoft JhengHei', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f4f4f4;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-size: 2.2em;
+        }
+        h2 {
+            color: #34495e;
+            margin: 25px 0 15px 0;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+        h3 {
+            color: #2c3e50;
+            margin: 20px 0 10px 0;
+        }
+        .form-section {
+            background: #f8f9fa;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+        .radio-group, .checkbox-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .radio-group label, .checkbox-group label {
+            display: flex;
+            align-items: center;
+            font-weight: normal;
+            cursor: pointer;
+        }
+        .radio-group input, .checkbox-group input {
+            width: auto;
+            margin-right: 8px;
+        }
+        .btn {
+            background: #3498db;
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #2980b9;
+        }
+        .btn-success {
+            background: #27ae60;
+        }
+        .btn-success:hover {
+            background: #219a52;
+        }
+        .btn-danger {
+            background: #e74c3c;
+        }
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        .test-type-selector {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .test-type-btn {
+            padding: 10px 20px;
+            margin: 0 10px;
+            font-size: 16px;
+        }
+        .hidden {
+            display: none;
+        }
+        .walk-test-row, .tug-test-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        .calculation-results {
+            background: #e8f5e8;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+        .updrs-item {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #e1e1e1;
+        }
+        .updrs-question {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        .required::after {
+            content: " *";
+            color: red;
+        }
+        .status-message {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+        }
+        .agreement-box {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .agreement-check {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .agreement-check input {
+            width: auto;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>帕金森評估數據收集系統</h1>
+        
+        <div class="test-type-selector">
+            <button class="btn test-type-btn" onclick="selectTestType('pre')">Pre Test</button>
+            <button class="btn test-type-btn" onclick="selectTestType('post')">Post Test</button>
+        </div>
+
+        <form id="assessmentForm">
+            <!-- 測試類型 -->
+            <input type="hidden" id="testType" name="testType" value="pre">
+
+            <!-- 基本信息 -->
+            <div class="form-section">
+                <h2>基本信息</h2>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="id" class="required">編號</label>
+                        <input type="text" id="id" name="id" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="name" class="required">姓名</label>
+                        <input type="text" id="name" name="name" required>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="testDate" class="required">測試日期</label>
+                        <input type="date" id="testDate" name="testDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="tester" class="required">測試員</label>
+                        <input type="text" id="tester" name="tester" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="moca">MOCA 分數 (0-30)</label>
+                    <input type="number" id="moca" name="moca" min="0" max="30">
+                </div>
+            </div>
+
+            <!-- PAR-Q 問卷 (僅Pre Test顯示) -->
+            <div class="form-section" id="parqSection">
+                <h2>PAR-Q 體能活動適應能力問卷</h2>
+                <p><em>請仔細閱讀下列問題，然後誠實回答：</em></p>
+                
+                <div class="form-group">
+                    <div class="updrs-question">1. 醫生曾否說過你的心臟有問題，以及只可進行醫生建議的體能活動？</div>
+                    <div class="radio-group">
+                        <label><input type="radio" name="parq1" value="是"> 是</label>
+                        <label><input type="radio" name="parq1" value="否" checked> 否</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="updrs-question">2. 你進行體能活動時會否感到胸口痛？</div>
+                    <div class="radio-group">
+                        <label><input type="radio" name="parq2" value="是"> 是</label>
+                        <label><input type="radio" name="parq2" value="否" checked> 否</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="updrs-question">3. 過去一個月內，你曾否在沒有進行體能活動時也感到胸口痛？</div>
+                    <div class="radio-group">
+                        <label><input type="radio" name="parq3" value="是"> 是</label>
+                        <label><input type="radio" name="parq3" value="否" checked> 否</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="updrs-question">4. 你曾否因感到暈眩而失去平衡，或曾否失去知覺？</div>
+                    <div class="radio-group">
+                        <label><input type="radio" name="parq4" value="是"> 是</label>
+                        <label><input type="radio" name="parq4" value="否" checked> 否</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="updrs-question">5. 你的骨骼或關節是否有毛病，且會因改變體能活動而惡化？</div>
+                    <div class="radio-group">
+                        <label><input type="radio" name="parq5" value="是"> 是</label>
+                        <label><input type="radio" name="parq5" value="否" checked> 否</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="updrs-question">6. 醫生現時是否有開血壓或心臟藥物給你服用？</div>
+                    <div class="radio-group">
+                        <label><input type="radio" name="parq6" value="是"> 是</label>
+                        <label><input type="radio" name="parq6" value="否" checked> 否</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="updrs-question">7. 是否有其他理由令你不應進行體能活動？</div>
+                    <div class="radio-group">
+                        <label><input type="radio" name="parq7" value="是"> 是</label>
+                        <label><input type="radio" name="parq7" value="否" checked> 否</label>
+                    </div>
+                </div>
+
+                <div class="agreement-box">
+                    <p>本人已閱悉、明白並填妥本問卷。本人的問題亦已得到圓滿解答。</p>
+                    <div class="agreement-check">
+                        <input type="checkbox" id="parqAgreement" name="parqAgreement" value="同意">
+                        <label for="parqAgreement">我同意並確認以上回答屬實</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 用藥詳情 (僅Pre Test顯示) -->
+            <div class="form-section" id="medicationSection">
+                <h2>用藥詳情</h2>
+                <div class="form-group">
+                    <label for="medicationDetails">用藥詳情</label>
+                    <textarea id="medicationDetails" name="medicationDetails" rows="4" placeholder="請輸入藥物名稱、劑量、服用頻率等信息"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="totalLEDD">總 LEDD 量</label>
+                    <input type="number" id="totalLEDD" name="totalLEDD" step="0.01" placeholder="請輸入計算後的總LEDD">
+                </div>
+            </div>
+
+            <!-- UPDRS-3 評估 -->
+            <div class="form-section">
+                <h2>UPDRS-3 運動評估</h2>
+                
+                <div class="form-group">
+                    <div class="updrs-question">3a. 病患是否正接受巴金森病藥物的治療?</div>
+                    <div class="radio-group">
+                        <label><input type="radio" name="updrs3a" value="是"> 是</label>
+                        <label><input type="radio" name="updrs3a" value="否"> 否</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="updrs-question">3b. 若是病患正接受巴金森病藥物的治療，請依據以下定義註記病患的臨床功能狀態:</div>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" name="updrs3b_on" value="來電"> 「來電」:是指當病患接受藥物並對藥物治療反應良好時的典型臨床功能狀態。</label>
+                        <label><input type="checkbox" name="updrs3b_off" value="停電"> 「停電」:是指當病患即使接受藥物也對藥物治療反應不佳時的典型臨床功能狀態。</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="updrs-question">3c. 是否有服用左多巴藥物?</div>
+                    <div class="radio-group">
+                        <label><input type="radio" name="updrs3c" value="是"> 是</label>
+                        <label><input type="radio" name="updrs3c" value="否"> 否</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="updrs3c1">3c1. 若是有服用左多巴，請註記距離最後一次服用此藥物約幾分鐘</label>
+                    <input type="number" id="updrs3c1" name="updrs3c1" placeholder="分鐘">
+                </div>
+
+                <!-- UPDRS-3 評分項目 -->
+                <div class="form-group">
+                    <label for="updrs3_1">3.1 言語 (0-4)</label>
+                    <select id="updrs3_1" name="updrs3_1">
+                        <option value="">請選擇</option>
+                        <option value="0">0: 正常</option>
+                        <option value="1">1: 表達、發音和構音輕度受損</option>
+                        <option value="2">2: 單調、含糊但可理解，中度受損</option>
+                        <option value="3">3: 明顯受損，難以理解</option>
+                        <option value="4">4: 根本無法理解</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="updrs3_2">3.2 面部表情 (0-4)</label>
+                    <select id="updrs3_2" name="updrs3_2">
+                        <option value="">請選擇</option>
+                        <option value="0">0: 正常</option>
+                        <option value="1">1: 輕微的面具臉，可能是正常的面無表情</option>
+                        <option value="2">2: 輕微但肯定是異常的面部表情減少</option>
+                        <option value="3">3: 中度面具臉，嘴唇有時張開</option>
+                        <option value="4">4: 面具臉嚴重，表情呆滯，口張開</option>
+                    </select>
+                </div>
+
+                <!-- 僵硬部分 -->
+                <h3>僵硬 (0-4分，每部位獨立評分)</h3>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="updrs3_3a">3.3a 僵硬 (脖子)</label>
+                        <select id="updrs3_3a" name="updrs3_3a">
+                            <option value="">請選擇</option>
+                            <option value="0">0: 無</option>
+                            <option value="1">1: 輕微</option>
+                            <option value="2">2: 輕度到中度</option>
+                            <option value="3">3: 明顯</option>
+                            <option value="4">4: 嚴重</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="updrs3_3b">3.3b 僵硬 (右上肢)</label>
+                        <select id="updrs3_3b" name="updrs3_3b">
+                            <option value="">請選擇</option>
+                            <option value="0">0: 無</option>
+                            <option value="1">1: 輕微</option>
+                            <option value="2">2: 輕度到中度</option>
+                            <option value="3">3: 明顯</option>
+                            <option value="4">4: 嚴重</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="updrs3_3c">3.3c 僵硬 (左上肢)</label>
+                        <select id="updrs3_3c" name="updrs3_3c">
+                            <option value="">請選擇</option>
+                            <option value="0">0: 無</option>
+                            <option value="1">1: 輕微</option>
+                            <option value="2">2: 輕度到中度</option>
+                            <option value="3">3: 明顯</option>
+                            <option value="4">4: 嚴重</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="updrs3_3d">3.3d 僵硬 (右下肢)</label>
+                        <select id="updrs3_3d" name="updrs3_3d">
+                            <option value="">請選擇</option>
+                            <option value="0">0: 無</option>
+                            <option value="1">1: 輕微</option>
+                            <option value="2">2: 輕度到中度</option>
+                            <option value="3">3: 明顯</option>
+                            <option value="4">4: 嚴重</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="updrs3_3e">3.3e 僵硬 (左下肢)</label>
+                        <select id="updrs3_3e" name="updrs3_3e">
+                            <option value="">請選擇</option>
+                            <option value="0">0: 無</option>
+                            <option value="1">1: 輕微</option>
+                            <option value="2">2: 輕度到中度</option>
+                            <option value="3">3: 明顯</option>
+                            <option value="4">4: 嚴重</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 手指拍打 -->
+                <h3>手指拍打 (0-4分)</h3>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="updrs3_4a">3.4a 手指拍打(右)</label>
+                        <select id="updrs3_4a" name="updrs3_4a">
+                            <option value="">請選擇</option>
+                            <option value="0">0: 正常</option>
+                            <option value="1">1: 輕微減慢和/或幅度減小</option>
+                            <option value="2">2: 有障礙，早期疲勞</option>
+                            <option value="3">3: 嚴重障礙，猶豫，偶爾停頓</option>
+                            <option value="4">4: 幾乎不能完成</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="updrs3_4b">3.4b 手指拍打(左)</label>
+                        <select id="updrs3_4b" name="updrs3_4b">
+                            <option value="">請選擇</option>
+                            <option value="0">0: 正常</option>
+                            <option value="1">1: 輕微減慢和/或幅度減小</option>
+                            <option value="2">2: 有障礙，早期疲勞</option>
+                            <option value="3">3: 嚴重障礙，猶豫，偶爾停頓</option>
+                            <option value="4">4: 幾乎不能完成</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 手掌運動 -->
+                <h3>手掌運動 (0-4分)</h3>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="updrs3_5a">3.5a 手掌運動 (右)</label>
+                        <select id="updrs3_5a" name="updrs3_5a">
+                            <option value="">請選擇</option>
+                            <option value="0">0: 正常</option>
+                            <option value="1">1: 輕微減慢和/或幅度減小</option>
+                            <option value="2">2: 有障礙，早期疲勞</option>
+                            <option value="3">3: 嚴重障礙，猶豫，偶爾停頓</option>
+                            <option value="4">4: 幾乎不能完成</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="updrs3_5b">3.5b 手掌運動 (左)</label>
+                        <select id="updrs3_5b" name="updrs3_5b">
+                            <option value="">請選擇</option>
+                            <option value="0">0: 正常</option>
+                            <option value="1">1: 輕微減慢和/或幅度減小</option>
+                            <option value="2">2: 有障礙，早期疲勞</option>
+                            <option value="3">3: 嚴重障礙，猶豫，偶爾停頓</option>
+                            <option value="4">4: 幾乎不能完成</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 前臂迴旋運動 -->
+                <h3>前臂迴旋運動 (0-4分)</h3>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="updrs3_6a">3.6a 前臂迴旋運動 (右)</label>
+                        <select id="updrs3_6a" name="updrs3_6a">
+                            <option value="">請選擇</option>
+                            <option value="0">0: 正常</option>
+                            <option value="1">1: 輕微減慢和/或幅度減小</option>
+                            <option value="2">2: 有障礙，早期疲勞</option>
+                            <option value="3">3: 嚴重障礙，猶豫，偶爾停頓</option>
+                            <option value="4">4: 幾乎不能完成</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="updrs3_6b">3.6b 前臂迴旋運動 (左)</label>
+                        <select id="updrs3_6b" name="updrs3_6b">
+                            <option value="">請選擇</option>
+                            <option value="0">0: 正常</option>
+                            <option value="1">1: 輕微減慢和/或幅度減小</option>
+                            <option value="2">2: 有障礙，早期疲勞</option>
+                            <option value="3">3: 嚴重障礙，猶豫，偶爾停頓</option>
+                            <option value="4">4: 幾乎不能完成</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 腳趾拍地運動 -->
+                <h3>腳趾拍地運動 (0-4分)</h3>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="updrs3_7a">3.7a 腳趾拍地運動 (右)</label>
+                        <select id="updrs3_7a" name="updrs3_7a">
+                            <option value="">請選擇</option>
+                            <option value="0">0: 正常</option>
+                            <option value="1">1: 輕微減慢和/或幅度減小</option>
+                            <option value="2">2: 有障礙，早期疲勞</option>
+                            <option value="3">3: 嚴重障礙，猶豫，偶爾停頓</option>
+                            <option value="4">4: 幾乎不能完成</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="updrs3_7b">3.7b 腳趾拍地運動 (左)</label>
+                        <select id="updrs3_7b" name="updrs3_7b">
+                            <option value="">請選擇</option>
+                            <option value="0">0: 正常</option>
+                            <option value="1">1: 輕微減慢和/或幅度減小</option>
+                            <option value="2">2: 有障礙，早期疲勞</option>
+                            <option value="3">3: 嚴重障礙，猶豫，偶爾停頓</option>
+                            <option value="4">4: 幾乎不能完成</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 兩腳靈敏度測試 -->
+                <h3>兩腳靈敏度測試 (0-4分)</h3>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="updrs3_8a">3.8a 兩腳靈敏度測試 (右)</label>
+                        <select id="updrs3_8a" name="updrs3_8a">
+                            <option value="">請選擇</option>
+                            <option value="0">0: 正常</option>
+                            <option value="1">1: 輕微減慢和/或幅度減小</option>
+                            <option value="2">2: 有障礙，早期疲勞</option>
+                            <option value="3">3: 嚴重障礙，猶豫，偶爾停頓</option>
+                            <option value="4">4: 幾乎不能完成</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="updrs3_8b">3.8b 兩腳靈敏度測試 (左)</label>
+                        <select id="updrs3_8b" name="updrs3_8b">
+                            <option value="">請選擇</option>
+                            <option value="0">0: 正常</option>
+                            <option value="1">1: 輕微減慢和/或幅度減小</option>
+                            <option value="2">2: 有障礙，早期疲勞</option>
+                            <option value="3">3: 嚴重障礙，猶豫，偶爾停頓</option>
+                            <option value="4">4: 幾乎不能完成</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 其他UPDRS項目 -->
+                <div class="form-group">
+                    <label for="updrs3_9">3.9 從椅子上站起來 (0-4)</label>
+                    <select id="updrs3_9" name="updrs3_9">
+                        <option value="">請選擇</option>
+                        <option value="0">0: 正常</option>
+                        <option value="1">1: 緩慢，可能需要嘗試一次以上</option>
+                        <option value="2">2: 推扶手站起</option>
+                        <option value="3">3: 向後倒，可能需要嘗試多次</option>
+                        <option value="4">4: 沒有幫助無法站起</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="updrs3_10">3.10 步態 (0-4)</label>
+                    <select id="updrs3_10" name="updrs3_10">
+                        <option value="">請選擇</option>
+                        <option value="0">0: 正常</option>
+                        <option value="1">1: 行走緩慢，可拖步，但無慌張步態</option>
+                        <option value="2">2: 行走困難，但不需要輔助，有些慌張步態</option>
+                        <option value="3">3: 嚴重障礙，需要輔助</option>
+                        <option value="4">4: 即使有幫助也不能行走</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="updrs3_11">3.11 步態凍結的評估 (0-4)</label>
+                    <select id="updrs3_11" name="updrs3_11">
+                        <option value="">請選擇</option>
+                        <option value="0">0: 無</option>
+                        <option value="1">1: 罕見，可能有啟動猶豫</option>
+                        <option value="2">2: 偶爾有凍結</option>
+                        <option value="3">3: 頻繁，偶爾因凍結跌倒</option>
+                        <option value="4">4: 經常因凍結跌倒</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="updrs3_12">3.12 姿勢平穩度 (0-4)</label>
+                    <select id="updrs3_12" name="updrs3_12">
+                        <option value="">請選擇</option>
+                        <option value="0">0: 正常</option>
+                        <option value="1">1: 後仰，但可自行恢復</option>
+                        <option value="2">2: 姿勢反射消失，不扶會跌倒</option>
+                        <option value="3">3: 非常不穩，有自發性傾倒</option>
+                        <option value="4">4: 不扶站不穩</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="updrs3_13">3.13 姿勢 (0-4)</label>
+                    <select id="updrs3_13" name="updrs3_13">
+                        <option value="">請選擇</option>
+                        <option value="0">0: 正常直立</option>
+                        <option value="1">1: 不完全直立，輕度前傾</option>
+                        <option value="2">2: 中度前傾，肯定異常，輕度側傾</option>
+                        <option value="3">3: 嚴重前傾伴駝背</option>
+                        <option value="4">4: 身體屈曲明顯，姿勢極度異常</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="updrs3_14">3.14 全身自發性的動作評估（身體動作遲緩） (0-4)</label>
+                    <select id="updrs3_14" name="updrs3_14">
+                        <option value="">請選擇</option>
+                        <option value="0">0: 無</option>
+                        <option value="1">1: 輕微動作緩慢，可能是正常遲緩</option>
+                        <option value="2">2: 輕度緩慢和動作減少，肯定異常</option>
+                        <option value="3">3: 中度緩慢，動作貧乏</option>
+                        <option value="4">4: 嚴重緩慢，不能運動</option>
+                    </select>
+                </div>
+
+                <!-- 顫抖部分 -->
+                <h3>顫抖評估 (0-4分)</h3>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="updrs3_15a">3.15a 雙手姿態型顫抖(右)</label>
+                        <select id="updrs3_15a" name="updrs3_15a">
+                            <option value="">請選擇</option>
+                            <option value="0">0: 無</option>
+                            <option value="1">1: 輕微，不經常出現</option>
+                            <option value="2">2: 輕度，影響少數活動</option>
+                            <option value="3">3: 中度，影響多數活動</option>
+                            <option value="4">4: 嚴重，影響多數活動</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="updrs3_15b">3.15b 雙手姿態型顫抖(左)</label>
+                        <select id="updrs3_15b" name="updrs3_15b">
+                            <option value="">請選擇</option>
+                            <option value="0">0: 無</option>
+                            <option value="1">1: 輕微，不經常出現</option>
+                            <option value="2">2: 輕度，影響少數活動</option>
+                            <option value="3">3: 中度，影響多數活動</option>
+                            <option value="4">4: 嚴重，影響多數活動</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="updrs3_16a">3.16a 雙手動作型顫抖(右)</label>
+                        <select id="updrs3_16a" name="updrs3_16a">
+                            <option value="">請選擇</option>
+                            <option value="0">0: 無</option>
+                            <option value="1">1: 輕微，不經常出現</option>
+                            <option value="2">2: 輕度，影響少數活動</option>
+                            <option value="3">3: 中度，影響多數活動</option>
+                            <option value="4">4: 嚴重，影響多數活動</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="updrs3_16b">3.16b 雙手動作型顫抖(左)</label>
+                        <select id="updrs3_16b" name="updrs3_16b">
+                            <option value="">請選擇</option>
+                            <option value="0">0: 無</option>
+                            <option value="1">1: 輕微，不經常出現</option>
+                            <option value="2">2: 輕度，影響少數活動</option>
+                            <option value="3">3: 中度，影響多數活動</option>
+                            <option value="4">4: 嚴重，影響多數活動</option>
+                        </select>
+                    </div>
+                </div>
+
+                <h3>靜止型顫抖幅度 (0-4分)</h3>
+                <div class="grid-3">
+                    <div class="form-group">
+                        <label for="updrs3_17a">3.17a 靜止型顫抖幅度(右上肢)</label>
+                        <select id="updrs3_17a" name="updrs3_17a">
+                            <option value="">請選擇</option>
+                            <option value="0">0: 無</option>
+                            <option value="1">1: 輕微，不經常出現</option>
+                            <option value="2">2: 輕度，影響少數活動</option>
+                            <option value="3">3: 中度，影響多數活動</option>
+                            <option value="4">4: 嚴重，影響多數活動</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="updrs3_17b">3.17b 靜止型顫抖幅度(左上肢)</label>
+                        <select id="updrs3_17b" name="updrs3_17b">
+                            <option value="">請選擇</option>
+                            <option value="0">0: 無</option>
+                            <option value="1">1: 輕微，不經常出現</option>
+                            <option value="2">2: 輕度，影響少數活動</option>
+                            <option value="3">3: 中度，影響多數活動</option>
+                            <option value="4">4: 嚴重，影響多數活動</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="updrs3_17c">3.17c 靜止型顫抖幅度(右下肢)</label>
+                        <select id="updrs3_17c" name="updrs3_17c">
+                            <option value="">請選擇</option>
+                            <option value="0">0: 無</option>
+                            <option value="1">1: 輕微，不經常出現</option>
+                            <option value="2">2: 輕度，影響少數活動</option>
+                            <option value="3">3: 中度，影響多數活動</option>
+                            <option value="4">4: 嚴重，影響多數活動</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="updrs3_17d">3.17d 靜止型顫抖幅度(左下肢)</label>
+                        <select id="updrs3_17d" name="updrs3_17d">
+                            <option value="">請選擇</option>
+                            <option value="0">0: 無</option>
+                            <option value="1">1: 輕微，不經常出現</option>
+                            <option value="2">2: 輕度，影響少數活動</option>
+                            <option value="3">3: 中度，影響多數活動</option>
+                            <option value="4">4: 嚴重，影響多數活動</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="updrs3_17e">3.17e 靜止型顫抖幅度(嘴唇/下巴)</label>
+                        <select id="updrs3_17e" name="updrs3_17e">
+                            <option value="">請選擇</option>
+                            <option value="0">0: 無</option>
+                            <option value="1">1: 輕微，不經常出現</option>
+                            <option value="2">2: 輕度，影響少數活動</option>
+                            <option value="3">3: 中度，影響多數活動</option>
+                            <option value="4">4: 嚴重，影響多數活動</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="updrs3_18">3.18 靜止型顫抖持續性 (0-4)</label>
+                    <select id="updrs3_18" name="updrs3_18">
+                        <option value="">請選擇</option>
+                        <option value="0">0: 無</option>
+                        <option value="1">1: 偶爾，小部分時間出現</option>
+                        <option value="2">2: 持續性，小部分時間無顫抖</option>
+                        <option value="3">3: 大部分時間有顫抖</option>
+                        <option value="4">4: 持續性顫抖</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <div class="updrs-question">A. 異動症（舞蹈症或是肌張力不全）是否在檢查的過程中出現?</div>
+                    <div class="radio-group">
+                        <label><input type="radio" name="updrsA" value="是"> 是</label>
+                        <label><input type="radio" name="updrsA" value="否"> 否</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="updrs-question">B. 若有的話，這些異動症狀是否會干擾動作功能的檢查?</div>
+                    <div class="radio-group">
+                        <label><input type="radio" name="updrsB" value="是"> 是</label>
+                        <label><input type="radio" name="updrsB" value="否"> 否</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 其他評估 -->
+            <div class="form-section">
+                <h2>其他評估</h2>
+                
+                <div class="form-group">
+                    <label for="hyStage">H&Y 分期</label>
+                    <select id="hyStage" name="hyStage">
+                        <option value="">請選擇</option>
+                        <option value="0">第 0 期: 沒有症狀</option>
+                        <option value="1">第 1 期: 單側之症狀</option>
+                        <option value="2">第 2 期: 兩側之症狀、姿勢平穩度正常</option>
+                        <option value="3">第 3 期: 輕微至中度之兩側症狀，姿勢稍微不平衡，不需他人協助</option>
+                        <option value="4">第 4 期: 嚴重失能，但走路和站立仍不需幫助</option>
+                        <option value="5">第 5 期: 若沒有人幫助，將完全依靠輪椅或終日臥床</option>
+                    </select>
+                </div>
+
+                <!-- TUG 測試部分 -->
+                <h3>TUG 測試 (Timed Up and Go Test)</h3>
+                <div class="tug-test-row">
+                    <div class="form-group">
+                        <label for="tug1">第一次 TUG (秒)</label>
+                        <input type="number" id="tug1" name="tug1" step="0.1" placeholder="第一次時間">
+                    </div>
+                    <div class="form-group">
+                        <label for="tug2">第二次 TUG (秒)</label>
+                        <input type="number" id="tug2" name="tug2" step="0.1" placeholder="第二次時間">
+                    </div>
+                    <div class="form-group">
+                        <label for="tug3">第三次 TUG (秒)</label>
+                        <input type="number" id="tug3" name="tug3" step="0.1" placeholder="第三次時間">
+                    </div>
+                </div>
+                <button type="button" class="btn" onclick="calculateTUGAverage()">計算TUG平均時間</button>
+                <div class="form-group">
+                    <label for="tug_avg">TUG 平均時間 (秒)</label>
+                    <input type="number" id="tug_avg" name="tug_avg" step="0.1" readonly>
+                </div>
+
+                <div class="form-group">
+                    <label for="walkDistance">步行距離 (米，選填)</label>
+                    <input type="number" id="walkDistance" name="walkDistance" step="0.1" placeholder="請輸入步行距離">
+                </div>
+
+                <h3>步行測試</h3>
+                <div class="walk-test-row">
+                    <div>
+                        <label for="walk1_time">第一次時間 (秒)</label>
+                        <input type="number" id="walk1_time" name="walk1_time" step="0.1">
+                    </div>
+                    <div>
+                        <label for="walk1_steps">第一次步數</label>
+                        <input type="number" id="walk1_steps" name="walk1_steps">
+                    </div>
+                </div>
+
+                <div class="walk-test-row">
+                    <div>
+                        <label for="walk2_time">第二次時間 (秒)</label>
+                        <input type="number" id="walk2_time" name="walk2_time" step="0.1">
+                    </div>
+                    <div>
+                        <label for="walk2_steps">第二次步數</label>
+                        <input type="number" id="walk2_steps" name="walk2_steps">
+                    </div>
+                </div>
+
+                <div class="walk-test-row">
+                    <div>
+                        <label for="walk3_time">第三次時間 (秒)</label>
+                        <input type="number" id="walk3_time" name="walk3_time" step="0.1">
+                    </div>
+                    <div>
+                        <label for="walk3_steps">第三次步數</label>
+                        <input type="number" id="walk3_steps" name="walk3_steps">
+                    </div>
+                </div>
+
+                <button type="button" class="btn" onclick="calculateWalkMetrics()">計算步行指標</button>
+
+                <div class="calculation-results">
+                    <div class="grid-3">
+                        <div class="form-group">
+                            <label for="avgSpeed">平均速度 (米/秒)</label>
+                            <input type="number" id="avgSpeed" name="avgSpeed" step="0.001" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="avgStepLength">平均步距 (米)</label>
+                            <input type="number" id="avgStepLength" name="avgStepLength" step="0.001" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="avgCadence">平均步頻 (步/分鐘)</label>
+                            <input type="number" id="avgCadence" name="avgCadence" step="0.1" readonly>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 提交按鈕 -->
+            <div style="text-align: center; margin-top: 30px;">
+                <button type="button" class="btn btn-success" onclick="saveData()" style="padding: 15px 30px; font-size: 18px;">
+                    保存數據
+                </button>
+                <button type="button" class="btn" onclick="saveToLocal()" style="margin-left: 15px;">
+                    保存到本地
+                </button>
+                <button type="button" class="btn btn-danger" onclick="clearForm()" style="margin-left: 15px;">
+                    清除表單
+                </button>
+            </div>
+        </form>
+
+        <div id="statusMessage" class="status-message hidden"></div>
+    </div>
+
+    <script>
+        // 替換為你的Google Apps Script Web App URL
+        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyr7CG7XMOedFnPoZG7ZtRLVFaG3O_xYnSbya-CXlnuaYrjxJK8JgdpcfqM5UWU2SwpUg/exec';
+
+        function selectTestType(type) {
+            document.getElementById('testType').value = type;
+            const parqSection = document.getElementById('parqSection');
+            const medicationSection = document.getElementById('medicationSection');
+            
+            if (type === 'post') {
+                parqSection.style.display = 'none';
+                medicationSection.style.display = 'none';
+            } else {
+                parqSection.style.display = 'block';
+                medicationSection.style.display = 'block';
+            }
+            
+            // 更新按鈕樣式
+            document.querySelectorAll('.test-type-btn').forEach(btn => {
+                btn.classList.remove('btn-success');
+            });
+            event.target.classList.add('btn-success');
+        }
+
+        function calculateTUGAverage() {
+            const tug1 = parseFloat(document.getElementById('tug1').value) || 0;
+            const tug2 = parseFloat(document.getElementById('tug2').value) || 0;
+            const tug3 = parseFloat(document.getElementById('tug3').value) || 0;
+
+            // 過濾掉0值，只計算有輸入的值
+            const values = [tug1, tug2, tug3].filter(value => value > 0);
+            
+            if (values.length === 0) {
+                alert('請至少輸入一次TUG測試時間');
+                return;
+            }
+
+            // 計算平均值
+            const avg = values.reduce((a, b) => a + b, 0) / values.length;
+            document.getElementById('tug_avg').value = avg.toFixed(1);
+            
+            showMessage(`TUG平均時間計算完成: ${avg.toFixed(1)}秒`, true);
+        }
+
+        function calculateWalkMetrics() {
+            const distance = parseFloat(document.getElementById('walkDistance').value) || 0;
+            const times = [
+                parseFloat(document.getElementById('walk1_time').value) || 0,
+                parseFloat(document.getElementById('walk2_time').value) || 0,
+                parseFloat(document.getElementById('walk3_time').value) || 0
+            ];
+            const steps = [
+                parseInt(document.getElementById('walk1_steps').value) || 0,
+                parseInt(document.getElementById('walk2_steps').value) || 0,
+                parseInt(document.getElementById('walk3_steps').value) || 0
+            ];
+
+            // 過濾掉0值
+            const validTimes = times.filter(t => t > 0);
+            const validSteps = steps.filter(s => s > 0);
+
+            if (validTimes.length === 0 || validSteps.length === 0 || distance === 0) {
+                alert('請先填寫步行距離和至少一次的時間和步數');
+                return;
+            }
+
+            // 計算平均值
+            const avgTime = validTimes.reduce((a, b) => a + b, 0) / validTimes.length;
+            const avgSteps = validSteps.reduce((a, b) => a + b, 0) / validSteps.length;
+
+            // 計算指標
+            const avgSpeed = distance / avgTime;
+            const avgStepLength = distance / avgSteps;
+            const avgCadence = (avgSteps / avgTime) * 60;
+
+            // 更新表單
+            document.getElementById('avgSpeed').value = avgSpeed.toFixed(3);
+            document.getElementById('avgStepLength').value = avgStepLength.toFixed(3);
+            document.getElementById('avgCadence').value = avgCadence.toFixed(1);
+            
+            showMessage('步行指標計算完成', true);
+        }
+
+        function showMessage(message, isSuccess) {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.textContent = message;
+            statusDiv.className = `status-message ${isSuccess ? 'success' : 'error'}`;
+            statusDiv.classList.remove('hidden');
+            
+            setTimeout(() => {
+                statusDiv.classList.add('hidden');
+            }, 5000);
+        }
+
+        async function saveData() {
+            const form = document.getElementById('assessmentForm');
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+            
+            // 處理複選框值
+            data.updrs3b_on = form.querySelector('input[name="updrs3b_on"]:checked') ? '是' : '';
+            data.updrs3b_off = form.querySelector('input[name="updrs3b_off"]:checked') ? '是' : '';
+
+            try {
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                
+                if (result.ok) {
+                    showMessage('數據保存成功！', true);
+                } else {
+                    showMessage('保存失敗: ' + result.error, false);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('網絡錯誤，請檢查連接', false);
+            }
+        }
+
+        function saveToLocal() {
+            const form = document.getElementById('assessmentForm');
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+            
+            // 添加時間戳
+            data.localSaveTime = new Date().toISOString();
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], { 
+                type: 'application/json' 
+            });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `parkinson_data_${data.id || 'unknown'}_${new Date().getTime()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showMessage('數據已保存到本地文件', true);
+        }
+
+        function clearForm() {
+            if (confirm('確定要清除所有表單數據嗎？')) {
+                document.getElementById('assessmentForm').reset();
+                // 清除計算字段
+                document.getElementById('tug_avg').value = '';
+                document.getElementById('avgSpeed').value = '';
+                document.getElementById('avgStepLength').value = '';
+                document.getElementById('avgCadence').value = '';
+                showMessage('表單已清除', true);
+            }
+        }
+
+        // 設置默認日期為今天
+        document.getElementById('testDate').valueAsDate = new Date();
+    </script>
+</body>
+</html>
