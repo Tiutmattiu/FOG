@@ -1717,15 +1717,17 @@
             下一部分<i class="fas fa-arrow-right ml-2"></i>
         </button>
     </div>
-
+    
     <script>
         // 配置
         const CONFIG = {
             autoSave: true,
             saveInterval: 2000, // 2秒自動保存
-            enableGoogleSheets: false, // 關閉 Google Sheets 提交
             currentSessionId: 'survey_' + Date.now()
         };
+
+        // 設定：Google Sheets Web App URL（替換為你的實際URL）
+        const SHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbznrm6mCYTnmTdHap9IigMAcS9nED91uPWXx3Ya0BdCZ2e6XIiocgtQ-66ktCdi3RB9cg/exec';
 
         // DOM 元素
         const form = document.getElementById('surveyForm');
@@ -2217,29 +2219,99 @@
             
             return data;
         }
-
-        // 提交處理
-        async function handleSubmit(e) {
-            e.preventDefault();
-            
-            const responseData = buildResponseData();
-            
-            // 保存到本地存儲 - 覆蓋之前的數據
-            try {
-                responses = [responseData]; // 只保留最新的提交
-                localStorage.setItem('surveyResponses', JSON.stringify(responses));
-                console.log('✅ 本地存储成功');
-            } catch {
-                alert('保存失敗，可能是存儲空間不足。請下載現有數據後清除進度。');
-                return;
+// JSONP提交函數
+function submitViaJSONP(data) {
+    return new Promise((resolve) => {
+        const callbackName = 'jsonpCallback_' + Date.now();
+        const script = document.createElement('script');
+        
+        // 構建URL - 將數據作為查詢參數傳遞
+        const params = new URLSearchParams();
+        params.append('callback', callbackName);
+        params.append('data', JSON.stringify(data));
+        
+        script.src = SHEET_WEB_APP_URL + '?' + params.toString();
+        console.log('JSONP請求URL:', script.src);
+        
+        // 設置全局回調函數
+        window[callbackName] = function(response) {
+            console.log('JSONP響應:', response);
+            if (response && response.result === 'success') {
+                console.log('✅ JSONP提交成功');
+                resolve(true);
+            } else {
+                console.warn('❌ JSONP提交失败:', response);
+                resolve(false);
             }
             
-            // 不清除進度，讓用戶可以繼續查看或修改
-            showStatus('問卷提交成功！數據已保存。', 'success');
-            
-            // 啟用下載按鈕
-            downloadBtn.classList.remove('hidden');
-            
+            // 清理
+            delete window[callbackName];
+            if (script.parentNode) {
+                document.head.removeChild(script);
+            }
+        };
+        
+        // 添加錯誤處理
+        script.onerror = function() {
+            console.error('❌ JSONP請求失敗');
+            delete window[callbackName];
+            if (script.parentNode) {
+                document.head.removeChild(script);
+            }
+            resolve(false);
+        };
+        
+        document.head.appendChild(script);
+        
+        // 設置超時處理
+        setTimeout(() => {
+            if (window[callbackName]) {
+                console.warn('⚠️ JSONP請求超時');
+                delete window[callbackName];
+                if (script.parentNode) {
+                    document.head.removeChild(script);
+                }
+                resolve(false);
+            }
+        }, 10000); // 10秒超時
+    });
+}
+
+// 提交處理 - 恢復JSONP方式
+async function handleSubmit(e) {
+    e.preventDefault();
+    
+    const responseData = buildResponseData();
+    
+    // 保存到本地存儲
+    try {
+        responses = [responseData]; // 只保留最新的提交
+        localStorage.setItem('surveyResponses', JSON.stringify(responses));
+        console.log('✅ 本地存储成功');
+    } catch {
+        alert('保存失敗，可能是存儲空間不足。請下載現有數據後清除進度。');
+        return;
+    }
+    
+    // 如果配置了Google Sheets URL，則通過JSONP提交
+    if (SHEET_WEB_APP_URL) {
+        console.log('🔄 开始通过JSONP提交到Google Sheets...');
+        const success = await submitViaJSONP(responseData);
+        
+        if (success) {
+            console.log('✅ 数据成功提交到Google Sheets');
+            showStatus('問卷已提交到Google Sheets！請點擊「下載答案」保存備份。', 'success');
+        } else {
+            console.log('⚠️ 数据仅保存在本地');
+            showStatus('問卷已提交（僅本地保存），云端同步失败。請點擊「下載答案」保存數據。', 'error');
+        }
+    } else {
+        showStatus('問卷已提交（僅本地保存）！請點擊「下載答案」保存。', 'success');
+    }
+    
+    // 啟用下載按鈕
+    downloadBtn.classList.remove('hidden');
+}
             // 不重置表單，保持數據可見
         }
 
