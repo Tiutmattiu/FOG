@@ -448,28 +448,36 @@
                             </label>
                         </div>
                     </div>
-                    <div class="question-group">
-                        <label class="block font-medium text-gray-700 mb-2">18. 肥胖（BMI > 30）（BMI = 體重(公斤) / 身高(厘米)²）</label>
-                        <div class="mt-3 grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-gray-700 mb-1">身高 (厘米)</label>
-                                <input type="number" name="fci18_height" step="0.01" required min="0" class="w-full p-2 border border-gray-300 rounded">
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 mb-1">體重 (公斤)</label>
-                                <input type="number" name="fci18_weight" step="0.1" required min="0" class="w-full p-2 border border-gray-300 rounded">
-                            </div>
-                        </div>
-                        <div id="bmiResult" class="mt-2 p-2 rounded text-sm font-medium hidden"></div>
-                        <div class="flex gap-4 mt-3">
-                            <label class="flex items-center">
-                                <input type="radio" name="fci18_obesity" value="是" required class="mr-2"> 是
-                            </label>
-                            <label class="flex items-center">
-                                <input type="radio" name="fci18_obesity" value="否" class="mr-2"> 否
-                            </label>
-                        </div>
-                    </div>
+<!-- 在FCI问卷第18题中，确保有这个BMI结果显示区域 -->
+<div class="question-group">
+    <label class="block font-medium text-gray-700 mb-2">18. 肥胖（BMI > 30）（BMI = 体重(公斤) / 身高(米)²）</label>
+    <div class="mt-3 grid grid-cols-2 gap-4">
+        <div>
+            <label class="block text-gray-700 mb-1">身高 (厘米)</label>
+            <input type="number" name="fci18_height" step="0.1" required min="0" class="w-full p-2 border border-gray-300 rounded" placeholder="例如：170">
+        </div>
+        <div>
+            <label class="block text-gray-700 mb-1">体重 (公斤)</label>
+            <input type="number" name="fci18_weight" step="0.1" required min="0" class="w-full p-2 border border-gray-300 rounded" placeholder="例如：65">
+        </div>
+    </div>
+<!-- BMI结果显示 -->
+<div id="bmiResult" class="mt-3 p-3 rounded text-sm font-medium hidden">
+    <div class="flex justify-between items-center">
+        <span>BMI计算结果：</span>
+        <span id="bmiValue">-</span>
+    </div>
+    <div id="bmiCategory" class="mt-1"></div>
+</div>
+<div class="flex gap-4 mt-3">
+    <label class="flex items-center">
+        <input type="radio" name="fci18_obesity" value="是" required class="mr-2"> 是
+    </label>
+    <label class="flex items-center">
+        <input type="radio" name="fci18_obesity" value="否" class="mr-2"> 否
+    </label>
+</div>
+</div>
                 </div>
             </div>
 
@@ -1883,47 +1891,78 @@
             showStatus('進度已清除！', 'success');
         }
 
-        // BMI 計算
-        function updateBMI() {
-            const heightInput = form.querySelector('[name="fci18_height"]');
-            const weightInput = form.querySelector('[name="fci18_weight"]');
-            const bmiResult = document.getElementById('bmiResult');
-            const obesityYes = form.querySelector('[name="fci18_obesity"][value="是"]');
-            const obesityNo = form.querySelector('[name="fci18_obesity"][value="否"]');
-            
-            if (!heightInput || !weightInput || !bmiResult) return;
-            
-            const h = parseFloat(heightInput.value || 0);
-            const w = parseFloat(weightInput.value || 0);
-            
-            if (h <= 0 || w <= 0) {
-                bmiResult.style.display = 'none';
-                return;
-            }
-            
-            const bmi = w / Math.pow(h / 100, 2);
-            const rounded = bmi.toFixed(1);
-            let category = '', categoryClass = '';
-            
-            if (bmi < 18.5) { category = '體重過輕'; categoryClass = 'bmi-underweight'; }
-            else if (bmi < 24) { category = '正常範圍'; categoryClass = 'bmi-normal'; }
-            else if (bmi < 27) { category = '過重'; categoryClass = 'bmi-overweight'; }
-            else if (bmi < 30) { category = '輕度肥胖'; categoryClass = 'bmi-overweight'; }
-            else if (bmi < 35) { category = '中度肥胖'; categoryClass = 'bmi-obese'; }
-            else { category = '重度肥胖'; categoryClass = 'bmi-obese'; }
-            
-            bmiResult.textContent = `BMI: ${rounded} - ${category}`;
-            bmiResult.className = `bmi-result ${categoryClass}`;
-            bmiResult.style.display = 'block';
-            
-            if (obesityYes && obesityNo) {
-                if (bmi > 30) {
-                    obesityYes.checked = true;
-                } else {
-                    obesityNo.checked = true;
-                }
-            }
+// 增强的BMI计算函数
+function updateBMI() {
+    const heightInput = form.querySelector('[name="fci18_height"]');
+    const weightInput = form.querySelector('[name="fci18_weight"]');
+    const bmiResult = document.getElementById('bmiResult');
+    const bmiValue = document.getElementById('bmiValue');
+    const bmiCategory = document.getElementById('bmiCategory');
+    const obesityYes = form.querySelector('[name="fci18_obesity"][value="是"]');
+    const obesityNo = form.querySelector('[name="fci18_obesity"][value="否"]');
+    
+    if (!heightInput || !weightInput || !bmiResult) return;
+    
+    const height = parseFloat(heightInput.value);
+    const weight = parseFloat(weightInput.value);
+    
+    // 重置样式
+    bmiResult.className = 'mt-3 p-3 rounded text-sm font-medium hidden';
+    bmiCategory.className = 'mt-1';
+    
+    if (isNaN(height) || isNaN(weight) || height <= 0 || weight <= 0) {
+        bmiResult.style.display = 'none';
+        return;
+    }
+    
+    // 计算BMI (体重kg / 身高m²)
+    const heightInMeters = height / 100;
+    const bmi = weight / (heightInMeters * heightInMeters);
+    const roundedBMI = bmi.toFixed(1);
+    
+    // 确定BMI类别
+    let category, categoryClass, isObese;
+    
+    if (bmi < 18.5) {
+        category = '体重过轻';
+        categoryClass = 'bmi-underweight';
+        isObese = false;
+    } else if (bmi < 24) {
+        category = '正常范围';
+        categoryClass = 'bmi-normal';
+        isObese = false;
+    } else if (bmi < 27) {
+        category = '过重';
+        categoryClass = 'bmi-overweight';
+        isObese = false;
+    } else if (bmi < 30) {
+        category = '轻度肥胖';
+        categoryClass = 'bmi-overweight';
+        isObese = false;
+    } else {
+        category = '肥胖 (BMI ≥ 30)';
+        categoryClass = 'bmi-obese';
+        isObese = true;
+    }
+    
+    // 更新显示
+    bmiValue.textContent = `${roundedBMI}`;
+    bmiCategory.textContent = category;
+    bmiResult.className = `mt-3 p-3 rounded text-sm font-medium ${categoryClass}`;
+    bmiResult.style.display = 'block';
+    
+    // 自动设置肥胖选项
+    if (obesityYes && obesityNo) {
+        if (isObese) {
+            obesityYes.checked = true;
+        } else {
+            obesityNo.checked = true;
         }
+    }
+    
+    // 触发自动保存
+    saveProgress();
+}
 
         // 進度條更新
         function updateProgressBar() {
@@ -2219,95 +2258,137 @@
             
             return data;
         }
-// JSONP提交函數
+// 修复的JSONP提交函数
 function submitViaJSONP(data) {
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
         const callbackName = 'jsonpCallback_' + Date.now();
+        const encodedData = encodeURIComponent(JSON.stringify(data));
+        
+        // 构建URL
+        const url = `${SHEET_WEB_APP_URL}?callback=${callbackName}&data=${encodedData}`;
+        console.log('JSONP请求URL:', url);
+        
         const script = document.createElement('script');
+        script.src = url;
         
-        // 構建URL - 將數據作為查詢參數傳遞
-        const params = new URLSearchParams();
-        params.append('callback', callbackName);
-        params.append('data', JSON.stringify(data));
-        
-        script.src = SHEET_WEB_APP_URL + '?' + params.toString();
-        console.log('JSONP請求URL:', script.src);
-        
-        // 設置全局回調函數
+        // 设置全局回调函数
         window[callbackName] = function(response) {
-            console.log('JSONP響應:', response);
-            if (response && response.result === 'success') {
-                console.log('✅ JSONP提交成功');
-                resolve(true);
-            } else {
-                console.warn('❌ JSONP提交失败:', response);
-                resolve(false);
-            }
+            console.log('JSONP响应:', response);
             
             // 清理
             delete window[callbackName];
-            if (script.parentNode) {
-                document.head.removeChild(script);
+            document.head.removeChild(script);
+            
+            if (response && response.ok) {
+                resolve(true);
+            } else {
+                reject(new Error(response?.error || '提交失败'));
             }
         };
         
-        // 添加錯誤處理
+        // 错误处理
         script.onerror = function() {
-            console.error('❌ JSONP請求失敗');
             delete window[callbackName];
             if (script.parentNode) {
                 document.head.removeChild(script);
             }
-            resolve(false);
+            reject(new Error('网络请求失败'));
         };
         
         document.head.appendChild(script);
         
-        // 設置超時處理
+        // 超时处理
         setTimeout(() => {
             if (window[callbackName]) {
-                console.warn('⚠️ JSONP請求超時');
                 delete window[callbackName];
                 if (script.parentNode) {
                     document.head.removeChild(script);
                 }
-                resolve(false);
+                reject(new Error('请求超时'));
             }
-        }, 10000); // 10秒超時
+        }, 15000);
     });
 }
 
-// 提交處理 - 恢復JSONP方式
+// 修复的提交处理函数
 async function handleSubmit(e) {
     e.preventDefault();
     
-    const responseData = buildResponseData();
-    
-    // 保存到本地存儲
-    try {
-        responses = [responseData]; // 只保留最新的提交
-        localStorage.setItem('surveyResponses', JSON.stringify(responses));
-        console.log('✅ 本地存储成功');
-    } catch {
-        alert('保存失敗，可能是存儲空間不足。請下載現有數據後清除進度。');
+    // 验证表单
+    if (!validateForm()) {
+        showStatus('请填写所有必填字段！', 'error');
         return;
     }
     
-    // 如果配置了Google Sheets URL，則通過JSONP提交
-    if (SHEET_WEB_APP_URL) {
-        console.log('🔄 开始通过JSONP提交到Google Sheets...');
-        const success = await submitViaJSONP(responseData);
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    
+    try {
+        // 禁用提交按钮
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>提交中...';
         
-        if (success) {
-            console.log('✅ 数据成功提交到Google Sheets');
-            showStatus('問卷已提交到Google Sheets！請點擊「下載答案」保存備份。', 'success');
-        } else {
-            console.log('⚠️ 数据仅保存在本地');
-            showStatus('問卷已提交（僅本地保存），云端同步失败。請點擊「下載答案」保存數據。', 'error');
+        const responseData = buildResponseData();
+        console.log('提交数据:', responseData);
+        
+        // 保存到本地存储
+        try {
+            responses.push(responseData);
+            localStorage.setItem('surveyResponses', JSON.stringify(responses));
+            console.log('✅ 本地存储成功');
+        } catch (storageError) {
+            console.warn('本地存储失败:', storageError);
         }
-    } else {
-        showStatus('問卷已提交（僅本地保存）！請點擊「下載答案」保存。', 'success');
+        
+        // 通过JSONP提交到Google Sheets
+        console.log('🔄 开始通过JSONP提交到Google Sheets...');
+        await submitViaJSONP(responseData);
+        
+        console.log('✅ 数据成功提交到Google Sheets');
+        showStatus('问卷提交成功！数据已保存到云端。', 'success');
+        
+        // 启用下载按钮
+        downloadBtn.classList.remove('hidden');
+        
+        // 可选：清空表单
+        // form.reset();
+        // clearProgress();
+        
+    } catch (error) {
+        console.error('提交失败:', error);
+        showStatus(`提交失败: ${error.message}。数据已保存在本地，请点击"下载数据"备份。`, 'error');
+    } finally {
+        // 恢复提交按钮
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
     }
+}
+
+// 添加表单验证函数
+function validateForm() {
+    const requiredFields = form.querySelectorAll('[required]');
+    let isValid = true;
+    
+    requiredFields.forEach(field => {
+        if (field.type === 'radio') {
+            const name = field.name;
+            const checked = form.querySelector(`input[name="${name}"]:checked`);
+            if (!checked) {
+                isValid = false;
+                // 高亮显示未填写的必填项
+                const group = field.closest('.question-group');
+                if (group) {
+                    group.style.borderLeftColor = '#ef4444';
+                }
+            }
+        } else if (!field.value.trim()) {
+            isValid = false;
+            field.style.borderColor = '#ef4444';
+        }
+    });
+    
+    return isValid;
+}
     
     // 啟用下載按鈕
     downloadBtn.classList.remove('hidden');
