@@ -1,2427 +1,1027 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>帕金森病問卷調查</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <style>
-        .bmi-result { padding: 8px; margin: 5px 0; border-radius: 4px; font-weight: bold; }
-        .bmi-underweight { background-color: #e3f2fd; color: #1565c0; }
-        .bmi-normal { background-color: #e8f5e8; color: #2e7d32; }
-        .bmi-overweight { background-color: #fff3e0; color: #ef6c00; }
-        .bmi-obese { background-color: #ffebee; color: #c62828; }
-        
-        .form-section {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        .question-group {
-            margin-bottom: 15px;
-            padding: 15px;
-            border-left: 4px solid #3b82f6;
-            background: #f8fafc;
-        }
-        
-        .progress-indicator {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 4px;
-            background: #e5e7eb;
-            z-index: 1000;
-        }
-        
-        .progress-bar {
-            height: 100%;
-            background: #10b981;
-            width: 0%;
-            transition: width 0.3s ease;
-        }
-        
-        .status-message {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 12px 20px;
-            border-radius: 8px;
-            color: white;
-            font-weight: bold;
-            z-index: 1001;
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-        
-        .status-success { background: #10b981; }
-        .status-error { background: #ef4444; }
-        .status-info { background: #3b82f6; }
-        
-        .nav-buttons {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            display: flex;
-            gap: 10px;
-        }
-        
-        .section-indicator {
-            position: fixed;
-            left: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        
-        .section-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #e5e7eb;
-            margin: 8px 0;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .section-dot.active {
-            background: #3b82f6;
-            transform: scale(1.2);
-        }
-        
-        .section-dot.completed {
-            background: #10b981;
-        }
-    </style>
-</head>
-<body class="bg-gray-50">
-    <!-- 进度指示器 -->
-    <div class="progress-indicator">
-        <div class="progress-bar" id="progressBar"></div>
+<!DOCTYPE html> <html lang="zh-Hant"> <head> <meta charset="UTF-8"> <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>帕金森病問卷調查</title> <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+<style>
+  .bmi-result { padding: 8px; margin: 5px 0; border-radius: 4px; font-weight: bold; }
+  .bmi-underweight { background-color: #e3f2fd; color: #1565c0; }
+  .bmi-normal { background-color: #e8f5e8; color: #2e7d32; }
+  .bmi-overweight { background-color: #fff3e0; color: #ef6c00; }
+  .bmi-obese { background-color: #ffebee; color: #c62828; }
+</style>
+ </head> <body class="bg-gray-100 flex items-center justify-center min-h-screen"> <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-3xl"> <h1 class="text-2xl font-bold mb-4 text-center">帕金森病問卷調查</h1> <p class="mb-4">請填寫以下資料及問卷，所有問題均需回答。進度會自動保存，關閉網頁後可繼續填寫。完成後點擊「提交」以儲存答案。</p>
+
+<div class="flex flex-col md:flex-row items-center justify-between mb-4 gap-3">
+  <div class="flex items-center gap-2">
+    <button id="loadProgress" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">載入上次進度</button>
+    <button id="clearProgress" class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600">清除進度</button>
+    <button id="download" type="button" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">下載答案 (.js)</button>
+  </div>
+  <div id="status" class="p-2 rounded text-sm bg-green-100 text-green-800" style="opacity:0; transition:opacity .3s ease;">自動儲存狀態</div>
+</div>
+
+<h2 class="text-xl font-semibold mb-2">基本資料</h2>
+<form id="surveyForm" class="space-y-4">
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div>
+      <label class="block font-medium">姓名</label>
+      <input type="text" name="name" required class="w-full p-2 border rounded">
     </div>
-    
-    <!-- 状态消息 -->
-    <div class="status-message" id="statusMessage"></div>
-    
-    <!-- 章节指示器 -->
-    <div class="section-indicator">
-        <div class="section-dot active" data-section="basic"></div>
-        <div class="section-dot" data-section="medical"></div>
-        <div class="section-dot" data-section="fci"></div>
-        <div class="section-dot" data-section="hads"></div>
-        <div class="section-dot" data-section="pdq"></div>
-        <div class="section-dot" data-section="fogq"></div>
+    <div>
+      <label class="block font-medium">年齡</label>
+      <input type="number" name="age" required min="0" class="w-full p-2 border rounded">
     </div>
-    
-    <div class="container mx-auto px-4 py-8 max-w-4xl">
-        <!-- 头部 -->
-        <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-gray-800 mb-2">
-                <i class="fas fa-brain mr-3 text-blue-500"></i>帕金森病問卷調查
-            </h1>
-            <p class="text-gray-600 mb-4">
-                請填寫以下資料及問卷，所有問題均需回答。進度會自動保存，關閉網頁後可繼續填寫。
-            </p>
-            <div class="flex justify-center gap-4 mb-4">
-                <button id="loadProgress" class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600 transition flex items-center">
-                    <i class="fas fa-download mr-2"></i>載入上次進度
-                </button>
-                <button id="clearProgress" class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition flex items-center">
-                    <i class="fas fa-trash mr-2"></i>清除進度
-                </button>
-                <button id="download" class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition flex items-center">
-                    <i class="fas fa-file-export mr-2"></i>下載數據
-                </button>
-            </div>
-        </div>
+  </div>
 
-        <form id="surveyForm" class="space-y-6">
-            <!-- 基本資料 -->
-            <div class="form-section" id="section-basic">
-                <h2 class="text-xl font-semibold mb-4 text-blue-600 flex items-center">
-                    <i class="fas fa-user-circle mr-2"></i>基本資料
-                </h2>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block font-medium text-gray-700 mb-2">姓名</label>
-                        <input type="text" name="name" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                    <div>
-                        <label class="block font-medium text-gray-700 mb-2">年齡</label>
-                        <input type="number" name="age" required min="0" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                    </div>
-                </div>
-            </div>
-
-            <!-- 醫療及背景資料 -->
-            <div class="form-section" id="section-medical">
-                <h2 class="text-xl font-semibold mb-4 text-blue-600 flex items-center">
-                    <i class="fas fa-heartbeat mr-2"></i>醫療及背景資料
-                </h2>
-                <div class="space-y-4">
-                    <div class="question-group">
-                        <label class="block font-medium text-gray-700 mb-2">得知帕金森病診斷至今多少年</label>
-                        <input type="number" name="diagnosisYear" required min="0" max="60" class="w-full p-3 border border-gray-300 rounded-lg">
-                    </div>
-                    
-                    <div class="question-group">
-                        <label class="block font-medium text-gray-700 mb-2">讀過幾年書</label>
-                        <input type="number" name="educationYears" required min="0" class="w-full p-3 border border-gray-300 rounded-lg">
-                    </div>
-                    
-                    <div class="question-group">
-                        <label class="block font-medium text-gray-700 mb-2">慣用手</label>
-                        <div class="flex gap-4">
-                            <label class="flex items-center">
-                                <input type="radio" name="dominantHand" value="右" required class="mr-2"> 右
-                            </label>
-                            <label class="flex items-center">
-                                <input type="radio" name="dominantHand" value="左" class="mr-2"> 左
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div class="question-group">
-                        <label class="block font-medium text-gray-700 mb-2">是否有金屬植入物（如心臟起搏器或神經刺激器）？</label>
-                        <div class="flex gap-4">
-                            <label class="flex items-center">
-                                <input type="radio" name="implants" value="是" required class="mr-2"> 是
-                            </label>
-                            <label class="flex items-center">
-                                <input type="radio" name="implants" value="否" class="mr-2"> 否
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div class="question-group">
-                        <label class="block font-medium text-gray-700 mb-2">是否使用輪椅？</label>
-                        <div class="flex gap-4 flex-wrap">
-                            <label class="flex items-center">
-                                <input type="radio" name="wheelchair" value="不使用" required class="mr-2"> 不使用
-                            </label>
-                            <label class="flex items-center">
-                                <input type="radio" name="wheelchair" value="偶爾用於長距離" class="mr-2"> 偶爾用於長距離
-                            </label>
-                            <label class="flex items-center">
-                                <input type="radio" name="wheelchair" value="日常使用" class="mr-2"> 日常使用
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <!-- 藥物治療 -->
-                    <div class="question-group">
-                        <label class="block font-medium text-gray-700 mb-2">帕金森病藥物治療</label>
-                        <div class="space-y-3">
-                            <div>
-                                <label class="block text-gray-700 mb-1">首次服藥時間 (例：08:00)</label>
-                                <input type="time" name="medFirstTime" required class="w-full p-3 border border-gray-300 rounded-lg">
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 mb-1">藥效持續時間 (小時)</label>
-                                <input type="number" name="medDuration" required min="0" class="w-full p-3 border border-gray-300 rounded-lg">
-                            </div>
-                            <div>
-                                <label class="block text-gray-700 mb-1">每日服藥次數</label>
-                                <input type="number" name="medFrequency" required min="0" class="w-full p-3 border border-gray-300 rounded-lg">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- 訓練時間 -->
-                    <div class="question-group">
-                        <label class="block font-medium text-gray-700 mb-2">每週訓練時間偏好</label>
-                        <p class="text-sm text-gray-600 mb-3">選擇不在同一天的三個1小時時段，30分鐘訓練+30分鐘準備</p>
-                        <div class="space-y-3">
-                            <select name="training1" required class="w-full p-3 border border-gray-300 rounded-lg">
-                                <option value="" disabled selected>選擇第一時段</option>
-                                <option value="星期一上午">星期一上午</option>
-                                <option value="星期一下午">星期一下午</option>
-                                <option value="星期二上午">星期二上午</option>
-                                <option value="星期二下午">星期二下午</option>
-                                <option value="星期三上午">星期三上午</option>
-                                <option value="星期三下午">星期三下午</option>
-                                <option value="星期四上午">星期四上午</option>
-                                <option value="星期四下午">星期四下午</option>
-                                <option value="星期五上午">星期五上午</option>
-                                <option value="星期五下午">星期五下午</option>
-                                <option value="星期六上午">星期六上午</option>
-                                <option value="星期六下午">星期六下午</option>
-                                <option value="星期日上午">星期日上午</option>
-                                <option value="星期日下午">星期日下午</option>
-                            </select>
-                            <select name="training2" required class="w-full p-3 border border-gray-300 rounded-lg">
-                                <option value="" disabled selected>選擇第二時段</option>
-                                <option value="星期一上午">星期一上午</option>
-                                <option value="星期一下午">星期一下午</option>
-                                <option value="星期二上午">星期二上午</option>
-                                <option value="星期二下午">星期二下午</option>
-                                <option value="星期三上午">星期三上午</option>
-                                <option value="星期三下午">星期三下午</option>
-                                <option value="星期四上午">星期四上午</option>
-                                <option value="星期四下午">星期四下午</option>
-                                <option value="星期五上午">星期五上午</option>
-                                <option value="星期五下午">星期五下午</option>
-                                <option value="星期六上午">星期六上午</option>
-                                <option value="星期六下午">星期六下午</option>
-                                <option value="星期日上午">星期日上午</option>
-                                <option value="星期日下午">星期日下午</option>
-                            </select>
-                            <select name="training3" required class="w-full p-3 border border-gray-300 rounded-lg">
-                                <option value="" disabled selected>選擇第三時段</option>
-                                <option value="星期一上午">星期一上午</option>
-                                <option value="星期一下午">星期一下午</option>
-                                <option value="星期二上午">星期二上午</option>
-                                <option value="星期二下午">星期二下午</option>
-                                <option value="星期三上午">星期三上午</option>
-                                <option value="星期三下午">星期三下午</option>
-                                <option value="星期四上午">星期四上午</option>
-                                <option value="星期四下午">星期四下午</option>
-                                <option value="星期五上午">星期五上午</option>
-                                <option value="星期五下午">星期五下午</option>
-                                <option value="星期六上午">星期六上午</option>
-                                <option value="星期六下午">星期六下午</option>
-                                <option value="星期日上午">星期日上午</option>
-                                <option value="星期日下午">星期日下午</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- FCI 問卷 -->
-            <div class="form-section" id="section-fci">
-                <h2 class="text-xl font-semibold mb-4 text-blue-600 flex items-center">
-                    <i class="fas fa-stethoscope mr-2"></i>功能性共病指數 (FCI)
-                </h2>
-                <p class="text-gray-600 mb-4">請回答以下關於您健康狀況的問題，標示是否有以下共病（是/否）。所有問題均需回答。</p>
-                
-                <div class="space-y-4">
-                    <!-- FCI Questions -->
-                    <div class="question-group">
-                        <label class="block font-medium text-gray-700 mb-2">1. 關節炎（類風濕性關節炎或骨關節炎）</label>
-                        <div class="flex gap-4">
-                            <label class="flex items-center">
-                                <input type="radio" name="fci1_arthritis" value="是" required class="mr-2"> 是
-                            </label>
-                            <label class="flex items-center">
-                                <input type="radio" name="fci1_arthritis" value="否" class="mr-2"> 否
-                            </label>
-                        </div>
-                    </div>
-                    <div class="question-group">
-                        <label class="block font-medium text-gray-700 mb-2">2. 骨質疏鬆症</label>
-                        <div class="flex gap-4">
-                            <label class="flex items-center">
-                                <input type="radio" name="fci2_osteoporosis" value="是" required class="mr-2"> 是
-                            </label>
-                            <label class="flex items-center">
-                                <input type="radio" name="fci2_osteoporosis" value="否" class="mr-2"> 否
-                            </label>
-                        </div>
-                    </div>
-                    <div class="question-group">
-                        <label class="block font-medium text-gray-700 mb-2">3. 哮喘</label>
-                        <div class="flex gap-4">
-                            <label class="flex items-center">
-                                <input type="radio" name="fci3_asthma" value="是" required class="mr-2"> 是
-                            </label>
-                            <label class="flex items-center">
-                                <input type="radio" name="fci3_asthma" value="否" class="mr-2"> 否
-                            </label>
-                        </div>
-                    </div>
-                    <div class="question-group">
-                        <label class="block font-medium text-gray-700 mb-2">4. 慢性阻塞性肺病、急性呼吸窘迫綜合症或肺氣腫</label>
-                        <div class="flex gap-4">
-                            <label class="flex items-center">
-                                <input type="radio" name="fci4_copd" value="是" required class="mr-2"> 是
-                            </label>
-                            <label class="flex items-center">
-                                <input type="radio" name="fci4_copd" value="否" class="mr-2"> 否
-                            </label>
-                        </div>
-                    </div>
-                    <div class="question-group">
-                        <label class="block font-medium text-gray-700 mb-2">5. 心絞痛</label>
-                        <div class="flex gap-4">
-                            <label class="flex items-center">
-                                <input type="radio" name="fci5_angina" value="是" required class="mr-2"> 是
-                            </label>
-                            <label class="flex items-center">
-                                <input type="radio" name="fci5_angina" value="否" class="mr-2"> 否
-                            </label>
-                        </div>
-                    </div>
-                    <div class="question-group">
-                        <label class="block font-medium text-gray-700 mb-2">6. 充血性心力衰竭（或心臟病）</label>
-                        <div class="flex gap-4">
-                            <label class="flex items-center">
-                                <input type="radio" name="fci6_heart_failure" value="是" required class="mr-2"> 是
-                            </label>
-                            <label class="flex items-center">
-                                <input type="radio" name="fci6_heart_failure" value="否" class="mr-2"> 否
-                            </label>
-                        </div>
-                    </div>
-                    <div class="question-group">
-                        <label class="block font-medium text-gray-700 mb-2">7. 心肌梗塞（心臟病發）</label>
-                        <div class="flex gap-4">
-                            <label class="flex items-center">
-                                <input type="radio" name="fci7_heart_attack" value="是" required class="mr-2"> 是
-                            </label>
-                            <label class="flex items-center">
-                                <input type="radio" name="fci7_heart_attack" value="否" class="mr-2"> 否
-                            </label>
-                        </div>
-                    </div>
-                    <div class="question-group">
-                        <label class="block font-medium text-gray-700 mb-2">8. 神經退行性疾病（如帕金森病或認知症）*</label>
-                        <div class="flex gap-4">
-                            <label class="flex items-center">
-                                <input type="radio" name="fci8_neuro_disease" value="是" required class="mr-2"> 是
-                            </label>
-                            <label class="flex items-center">
-                                <input type="radio" name="fci8_neuro_disease" value="否" class="mr-2"> 否
-                            </label>
-                        </div>
-                        <p class="text-sm text-gray-500 mt-2">*註：本研究針對帕金森病患者，請如實回答是否有其他神經退行性疾病（如認知症）。</p>
-                    </div>
-                    <div class="question-group">
-                        <label class="block font-medium text-gray-700 mb-2">10. 週邊血管疾病</label>
-                        <div class="flex gap-4">
-                            <label class="flex items-center">
-                                <input type="radio" name="fci10_peripheral_vascular" value="是" required class="mr-2"> 是
-                            </label>
-                            <label class="flex items-center">
-                                <input type="radio" name="fci10_peripheral_vascular" value="否" class="mr-2"> 否
-                            </label>
-                        </div>
-                    </div>
-                    <div class="question-group">
-                        <label class="block font-medium text-gray-700 mb-2">11. 糖尿病（第一型或第二型）</label>
-                        <div class="flex gap-4">
-                            <label class="flex items-center">
-                                <input type="radio" name="fci11_diabetes" value="是" required class="mr-2"> 是
-                            </label>
-                            <label class="flex items-center">
-                                <input type="radio" name="fci11_diabetes" value="否" class="mr-2"> 否
-                            </label>
-                        </div>
-                    </div>
-                    <div class="question-group">
-                        <label class="block font-medium text-gray-700 mb-2">12. 上消化道疾病（潰瘍、橫膈膜疝氣或胃食道逆流）</label>
-                        <div class="flex gap-4">
-                            <label class="flex items-center">
-                                <input type="radio" name="fci12_gastro" value="是" required class="mr-2"> 是
-                            </label>
-                            <label class="flex items-center">
-                                <input type="radio" name="fci12_gastro" value="否" class="mr-2"> 否
-                            </label>
-                        </div>
-                    </div>
-                    <div class="question-group">
-                        <label class="block font-medium text-gray-700 mb-2">16. 聽力障礙（即使使用助聽器仍嚴重聽力困難）</label>
-                        <div class="flex gap-4">
-                            <label class="flex items-center">
-                                <input type="radio" name="fci16_hearing" value="是" required class="mr-2"> 是
-                            </label>
-                            <label class="flex items-center">
-                                <input type="radio" name="fci16_hearing" value="否" class="mr-2"> 否
-                            </label>
-                        </div>
-                    </div>
-                    <div class="question-group">
-                        <label class="block font-medium text-gray-700 mb-2">17. 退行性椎間盤疾病（背部疾病、脊柱狹窄或嚴重慢性背痛）</label>
-                        <div class="flex gap-4">
-                            <label class="flex items-center">
-                                <input type="radio" name="fci17_disc_disease" value="是" required class="mr-2"> 是
-                            </label>
-                            <label class="flex items-center">
-                                <input type="radio" name="fci17_disc_disease" value="否" class="mr-2"> 否
-                            </label>
-                        </div>
-                    </div>
-<!-- 在FCI问卷第18题中，确保有这个BMI结果显示区域 -->
-<div class="question-group">
-    <label class="block font-medium text-gray-700 mb-2">18. 肥胖（BMI > 30）（BMI = 体重(公斤) / 身高(米)²）</label>
-    <div class="mt-3 grid grid-cols-2 gap-4">
+  <h2 class="text-xl font-semibold mb-2">醫療及背景資料</h2>
+  <div class="space-y-2">
+    <div>
+      <label class="block font-medium">得知帕金森病診斷至今多少年</label>
+      <input type="number" name="diagnosisYear" required min="0" max="60" class="w-full p-2 border rounded">
+    </div>
+    <div>
+      <label class="block font-medium">讀過幾年書</label>
+      <input type="number" name="educationYears" required min="0" class="w-full p-2 border rounded">
+    </div>
+    <div>
+      <label class="block font-medium">慣用手</label>
+      <label><input type="radio" name="dominantHand" value="右" required> 右</label>
+      <label><input type="radio" name="dominantHand" value="左"> 左</label>
+    </div>
+    <div>
+      <label class="block font-medium">是否有金屬植入物（如心臟起搏器或神經刺激器）？</label>
+      <label><input type="radio" name="implants" value="是" required> 是</label>
+      <label><input type="radio" name="implants" value="否"> 否</label>
+    </div>
+    <div>
+      <label class="block font-medium">是否使用輪椅？</label>
+      <label><input type="radio" name="wheelchair" value="不使用" required> 不使用</label>
+      <label><input type="radio" name="wheelchair" value="偶爾用於長距離"> 偶爾用於長距離</label>
+      <label><input type="radio" name="wheelchair" value="日常使用"> 日常使用</label>
+    </div>
+    <div>
+      <label class="block font-medium">帕金森病藥物治療</label>
+      <div class="space-y-2">
         <div>
-            <label class="block text-gray-700 mb-1">身高 (厘米)</label>
-            <input type="number" name="fci18_height" step="0.1" required min="0" class="w-full p-2 border border-gray-300 rounded" placeholder="例如：170">
+          <label class="block">首次服藥時間 (例：08:00)</label>
+          <input type="time" name="medFirstTime" required class="w-full p-2 border rounded">
         </div>
         <div>
-            <label class="block text-gray-700 mb-1">体重 (公斤)</label>
-            <input type="number" name="fci18_weight" step="0.1" required min="0" class="w-full p-2 border border-gray-300 rounded" placeholder="例如：65">
+          <label class="block">藥效持續時間 (小時)</label>
+          <input type="number" name="medDuration" required min="0" class="w-full p-2 border rounded">
         </div>
+        <div>
+          <label class="block">每日服藥次數</label>
+          <input type="number" name="medFrequency" required min="0" class="w-full p-2 border rounded">
+        </div>
+      </div>
     </div>
-<!-- BMI结果显示 -->
-<div id="bmiResult" class="mt-3 p-3 rounded text-sm font-medium hidden">
-    <div class="flex justify-between items-center">
-        <span>BMI计算结果：</span>
-        <span id="bmiValue">-</span>
+    <div>
+      <label class="block font-medium">每週訓練時間偏好 (選擇不在同一天的三個1小時時段，30分鐘訓練+30分鐘準備)</label>
+      <select name="training1" required class="w-full p-2 border rounded">
+        <option value="" disabled selected>選擇第一時段</option>
+        <option value="星期一上午">星期一上午</option>
+        <option value="星期一下午">星期一下午</option>
+        <option value="星期二上午">星期二上午</option>
+        <option value="星期二下午">星期二下午</option>
+        <option value="星期三上午">星期三上午</option>
+        <option value="星期三下午">星期三下午</option>
+        <option value="星期四上午">星期四上午</option>
+        <option value="星期四下午">星期四下午</option>
+        <option value="星期五上午">星期五上午</option>
+        <option value="星期五下午">星期五下午</option>
+        <option value="星期六上午">星期六上午</option>
+        <option value="星期六下午">星期六下午</option>
+        <option value="星期日上午">星期日上午</option>
+        <option value="星期日下午">星期日下午</option>
+      </select>
+      <select name="training2" required class="w-full p-2 border rounded mt-2">
+        <option value="" disabled selected>選擇第二時段</option>
+        <option value="星期一上午">星期一上午</option>
+        <option value="星期一下午">星期一下午</option>
+        <option value="星期二上午">星期二上午</option>
+        <option value="星期二下午">星期二下午</option>
+        <option value="星期三上午">星期三上午</option>
+        <option value="星期三下午">星期三下午</option>
+        <option value="星期四上午">星期四上午</option>
+        <option value="星期四下午">星期四下午</option>
+        <option value="星期五上午">星期五上午</option>
+        <option value="星期五下午">星期五下午</option>
+        <option value="星期六上午">星期六上午</option>
+        <option value="星期六下午">星期六下午</option>
+        <option value="星期日上午">星期日上午</option>
+        <option value="星期日下午">星期日下午</option>
+      </select>
+      <select name="training3" required class="w-full p-2 border rounded mt-2">
+        <option value="" disabled selected>選擇第三時段</option>
+        <option value="星期一上午">星期一上午</option>
+        <option value="星期一下午">星期一下午</option>
+        <option value="星期二上午">星期二上午</option>
+        <option value="星期二下午">星期二下午</option>
+        <option value="星期三上午">星期三上午</option>
+        <option value="星期三下午">星期三下午</option>
+        <option value="星期四上午">星期四上午</option>
+        <option value="星期四下午">星期四下午</option>
+        <option value="星期五上午">星期五上午</option>
+        <option value="星期五下午">星期五下午</option>
+        <option value="星期六上午">星期六上午</option>
+        <option value="星期六下午">星期六下午</option>
+        <option value="星期日上午">星期日上午</option>
+        <option value="星期日下午">星期日下午</option>
+      </select>
     </div>
-    <div id="bmiCategory" class="mt-1"></div>
-</div>
-<div class="flex gap-4 mt-3">
-    <label class="flex items-center">
-        <input type="radio" name="fci18_obesity" value="是" required class="mr-2"> 是
-    </label>
-    <label class="flex items-center">
-        <input type="radio" name="fci18_obesity" value="否" class="mr-2"> 否
-    </label>
-</div>
-</div>
-                </div>
-            </div>
+  </div>
 
-            <!-- HADS 問卷 -->
-            <div class="form-section" id="section-hads">
-                <h2 class="text-xl font-semibold mb-4 text-blue-600 flex items-center">
-                    <i class="fas fa-brain mr-2"></i>醫院焦慮及抑鬱量表 (HADS)
-                </h2>
-                <p class="text-gray-600 mb-4">請閱讀下列每題，並選擇最接近你過去一星期的情緒狀況的選項。</p>
-                
-                <div class="space-y-6">
-                    <!-- HADS Questions -->
-                    <div class="question-group">
-                        <p class="font-medium text-gray-800 mb-3">1. 我感到神經緊張</p>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads1" value="3" required class="mr-3"> 大部份時候感到 (3)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads1" value="2" class="mr-3"> 很多時候感到 (2)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads1" value="1" class="mr-3"> 有時候、間中感到 (1)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads1" value="0" class="mr-3"> 完全不感到 (0)
-                            </label>
-                        </div>
-                    </div>
-                    <div class="question-group">
-                        <p class="font-medium text-gray-800 mb-3">2. 我依然享受我以前享受的事物</p>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads2" value="0" required class="mr-3"> 肯定和以前一樣 (0)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads2" value="1" class="mr-3"> 有點不及以前 (1)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads2" value="2" class="mr-3"> 只及以前少許 (2)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads2" value="3" class="mr-3"> 和以前差得極遠 (3)
-                            </label>
-                        </div>
-                    </div>
-                    <div class="question-group">
-                        <p class="font-medium text-gray-800 mb-3">3. 我有一種驚恐，好像有些可怕的事情會發生</p>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads3" value="3" required class="mr-3"> 很肯定有，而且相當厲害 (3)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads3" value="2" class="mr-3"> 有，但不太厲害 (2)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads3" value="1" class="mr-3"> 有少許，但不令我擔心 (1)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads3" value="0" class="mr-3"> 完全沒有 (0)
-                            </label>
-                        </div>
-                    </div>
-                    <div class="question-group">
-                        <p class="font-medium text-gray-800 mb-3">4. 我能看到事物有趣的一面並且會心微笑</p>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads4" value="0" required class="mr-3"> 和以前一樣 (0)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads4" value="1" class="mr-3"> 有點不如以前 (1)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads4" value="2" class="mr-3"> 肯定不如以前 (2)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads4" value="3" class="mr-3"> 完全不能 (3)
-                            </label>
-                        </div>
-                    </div>
-                    <div class="question-group">
-                        <p class="font-medium text-gray-800 mb-3">5. 煩惱的念頭在我腦海中浮現</p>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads5" value="3" required class="mr-3"> 絕大部份時候 (3)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads5" value="2" class="mr-3"> 很多時候 (2)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads5" value="1" class="mr-3"> 有時候，但不太常 (1)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads5" value="0" class="mr-3"> 只是間中 (0)
-                            </label>
-                        </div>
-                    </div>
-                    <div class="question-group">
-                        <p class="font-medium text-gray-800 mb-3">6. 我感到高興</p>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads6" value="3" required class="mr-3"> 完全不感到 (3)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads6" value="2" class="mr-3"> 不時常感到 (2)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads6" value="1" class="mr-3"> 有時候感到 (1)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads6" value="0" class="mr-3"> 大部份時候感到 (0)
-                            </label>
-                        </div>
-                    </div>
-                    <div class="question-group">
-                        <p class="font-medium text-gray-800 mb-3">7. 我能安坐並感到鬆弛</p>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads7" value="0" required class="mr-3"> 肯定能夠 (0)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads7" value="1" class="mr-3"> 通常能夠 (1)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads7" value="2" class="mr-3"> 不時常能夠 (2)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads7" value="3" class="mr-3"> 完全不能 (3)
-                            </label>
-                        </div>
-                    </div>
-                    <div class="question-group">
-                        <p class="font-medium text-gray-800 mb-3">8. 我感到缺乏衝勁，整個人都慢下來</p>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads8" value="3" required class="mr-3"> 差不多全部時候 (3)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads8" value="2" class="mr-3"> 非常多時候 (2)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads8" value="1" class="mr-3"> 有時候 (1)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads8" value="0" class="mr-3"> 完全沒有 (0)
-                            </label>
-                        </div>
-                    </div>
-                    <div class="question-group">
-                        <p class="font-medium text-gray-800 mb-3">9. 我有一種忐忑不安的驚恐</p>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads9" value="0" required class="mr-3"> 完全沒有 (0)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads9" value="1" class="mr-3"> 間中有 (1)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads9" value="2" class="mr-3"> 相當多時候有 (2)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads9" value="3" class="mr-3"> 很常有 (3)
-                            </label>
-                        </div>
-                    </div>
-                    <div class="question-group">
-                        <p class="font-medium text-gray-800 mb-3">10. 我對自己的儀容已失去興趣</p>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads10" value="3" required class="mr-3"> 肯定失去 (3)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads10" value="2" class="mr-3"> 比我應該關心的少 (2)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads10" value="1" class="mr-3"> 可能比我以前關心的少 (1)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads10" value="0" class="mr-3"> 我像以前一樣關心 (0)
-                            </label>
-                        </div>
-                    </div>
-                    <div class="question-group">
-                        <p class="font-medium text-gray-800 mb-3">11. 我感到不能安靜，像要不停地走動</p>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads11" value="3" required class="mr-3"> 很強烈 (3)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads11" value="2" class="mr-3"> 相當強烈 (2)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads11" value="1" class="mr-3"> 不太強烈 (1)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads11" value="0" class="mr-3"> 完全沒有 (0)
-                            </label>
-                        </div>
-                    </div>
-                    <div class="question-group">
-                        <p class="font-medium text-gray-800 mb-3">12. 我對未來的事抱有熱切期望</p>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads12" value="0" required class="mr-3"> 和以前一樣 (0)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads12" value="1" class="mr-3"> 較為不如以前 (1)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads12" value="2" class="mr-3"> 肯定不如以前 (2)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads12" value="3" class="mr-3"> 絕無僅有 (3)
-                            </label>
-                        </div>
-                    </div>
-                    <div class="question-group">
-                        <p class="font-medium text-gray-800 mb-3">13. 我突然感到驚惶失措</p>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads13" value="3" required class="mr-3"> 非常多時候 (3)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads13" value="2" class="mr-3"> 相當多時候 (2)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads13" value="1" class="mr-3"> 不太多時候 (1)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads13" value="0" class="mr-3"> 完全沒有 (0)
-                            </label>
-                        </div>
-                    </div>
-                    <div class="question-group">
-                        <p class="font-medium text-gray-800 mb-3">14. 我能享受喜歡的書、電台或電視節目</p>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads14" value="0" required class="mr-3"> 經常能夠 (0)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads14" value="1" class="mr-3"> 有時候能夠 (1)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads14" value="2" class="mr-3"> 不常能夠 (2)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="hads14" value="3" class="mr-3"> 絕少能夠 (3)
-                            </label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-<!-- PDQ-39 問卷 -->
-<div class="form-section" id="section-pdq">
-    <h2 class="text-xl font-semibold mb-4 text-blue-600 flex items-center">
-        <i class="fas fa-chart-line mr-2"></i>帕金森病生活質量問卷 (PDQ-39)
-    </h2>
-    <p class="text-gray-600 mb-4">在過去一個月中，帕金森病對你在下列各項的日常生活影響有多少：</p>
-    
-    <div class="space-y-4">
-        <!-- PDQ-39 問題 1-10 -->
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">1. 做從前喜歡的消遣活動時有困難</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq1" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq1" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq1" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq1" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq1" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">2. 做家居工作 (如煮飯、家務) 時有困難</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq2" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq2" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq2" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq2" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq2" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">3. 購物後攜帶所購物品時有困難</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq3" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq3" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq3" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq3" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq3" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">4. 步行半哩 (大約800米) 時有困難</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq4" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq4" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq4" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq4" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq4" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">5. 步行一百碼 (大約90米) 時有困難</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq5" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq5" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq5" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq5" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq5" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">6. 在家中自由走動時有困難</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq6" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq6" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq6" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq6" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq6" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">7. 在公眾場所內走動時有困難</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq7" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq7" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq7" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq7" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq7" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">8. 外出時需要別人陪伴</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq8" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq8" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq8" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq8" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq8" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">9. 在公眾場所內很怕或很擔心會跌倒</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq9" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq9" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq9" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq9" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq9" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">10. 留在家中的時間比起自己希望的為長</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq10" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq10" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq10" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq10" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq10" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <!-- PDQ-39 問題 11-20 -->
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">11. 替自己沐浴時有困難</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq11" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq11" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq11" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq11" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq11" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">12. 替自己穿衣時有困難</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq12" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq12" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq12" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq12" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq12" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">13. 替自己扣鈕或縛鞋帶時有困難</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq13" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq13" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq13" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq13" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq13" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">14. 要清楚地書寫時有困難</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq14" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq14" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq14" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq14" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq14" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">15. 用刀切食物時有困難</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq15" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq15" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq15" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq15" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq15" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">16. 拿起水杯要保持不倒瀉水會有困難</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq16" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq16" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq16" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq16" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq16" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">17. 感到抑鬱</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq17" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq17" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq17" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq17" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq17" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">18. 感到孤單和被隔離</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq18" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq18" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq18" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq18" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq18" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">19. 感覺想哭或流淚</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq19" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq19" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq19" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq19" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq19" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">20. 感到憤怒或苦澀</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq20" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq20" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq20" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq20" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq20" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <!-- PDQ-39 問題 21-30 -->
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">21. 感到焦慮</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq21" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq21" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq21" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq21" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq21" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">22. 替自己的將來感到憂慮</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq22" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq22" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq22" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq22" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq22" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">23. 不想讓他人知道你有帕金森病</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq23" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq23" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq23" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq23" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq23" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">24. 盡量避免在公眾場合飲食</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq24" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq24" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq24" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq24" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq24" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">25. 因自己患有帕金森病，在公眾場合會感到尷尬</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq25" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq25" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq25" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq25" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq25" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">26. 為別人對自己患病所作出的反應而感到擔心</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq26" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq26" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq26" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq26" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq26" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">27. 親密的人際關係因患病而出現問題</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq27" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq27" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq27" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq27" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq27" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">28. 缺乏配偶或伴侶所給予的支持 (如無配偶或伴侶，請選「從來沒有」)</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq28" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq28" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq28" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq28" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq28" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">29. 缺乏家庭或摯友所給予的支持</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq29" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq29" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq29" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq29" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq29" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">30. 在日間無故地睡著</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq30" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq30" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq30" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq30" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq30" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <!-- PDQ-39 問題 31-39 -->
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">31. 集中精神時有困難 (如正在閱讀或觀看電視)</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq31" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq31" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq31" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq31" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq31" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">32. 覺得自己記憶力差</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq32" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq32" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq32" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq32" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq32" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">33. 有發惡夢或出現幻覺的情況</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq33" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq33" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq33" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq33" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq33" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">34. 說話時有困難</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq34" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq34" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq34" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq34" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq34" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">35. 覺得自己不能與別人正常地溝通</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq35" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq35" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq35" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq35" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq35" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">36. 覺得被別人忽視</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq36" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq36" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq36" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq36" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq36" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">37. 肌肉有痛性抽筋</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq37" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq37" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq37" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq37" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq37" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">38. 關節或身體部分覺得疼痛</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq38" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq38" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq38" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq38" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq38" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
-
-        <div class="question-group">
-            <p class="font-medium text-gray-800 mb-3">39. 對外界環境的冷或熱感到很不舒服 (例：進出空氣調節房間)</p>
-            <div class="grid grid-cols-2 md:grid-cols-5 gap-2">
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq39" value="0" required class="mr-2"> 從來沒有 (0)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq39" value="1" class="mr-2"> 偶然 (1)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq39" value="2" class="mr-2"> 有時候 (2)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq39" value="3" class="mr-2"> 經常 (3)
-                </label>
-                <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                    <input type="radio" name="pdq39" value="4" class="mr-2"> 完全做不到或所有時候 (4)
-                </label>
-            </div>
-        </div>
+  <h2 class="text-xl font-semibold mb-2">功能性共病指數 (FCI)</h2>
+  <p class="mb-4">請回答以下關於您健康狀況的問題，標示是否有以下共病（是/否）。所有問題均需回答。</p>
+  <div class="space-y-2">
+    <div>
+      <label class="block font-medium">1. 關節炎（類風濕性關節炎或骨關節炎）</label>
+      <label><input type="radio" name="fci1_arthritis" value="是" required> 是</label>
+      <label><input type="radio" name="fci1_arthritis" value="否"> 否</label>
     </div>
-</div>
-            <!-- FOGQ 問卷 -->
-            <div class="form-section" id="section-fogq">
-                <h2 class="text-xl font-semibold mb-4 text-blue-600 flex items-center">
-                    <i class="fas fa-walking mr-2"></i>步態凍結問卷 (FOGQ)
-                </h2>
-                <p class="text-gray-600 mb-4">請觀看以下影片以了解步態凍結的相關信息，然後回答問題。</p>
-                
-                <div class="mb-6">
-                    <div id="loading" class="text-center mb-4 text-gray-500">
-                        <i class="fas fa-spinner fa-spin mr-2"></i>影片載入中，請稍候...
-                    </div>
-                    <iframe id="fogqVideo" width="100%" height="400" src="https://www.youtube.com/embed/TSoD3ecvzu4?rel=0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="display: none;"></iframe>
-                </div>
-                
-                <div class="space-y-4">
-                    <!-- FOGQ Questions -->
-                    <div class="question-group">
-                        <p class="font-medium text-gray-800 mb-3">1. 最近一周，在您狀態最差的時候走路</p>
-                        <div class="grid grid-cols-1 gap-2">
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq1" value="0" required class="mr-3"> 正常 (0)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq1" value="1" class="mr-3"> 基本正常 - 稍微緩慢 (1)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq1" value="2" class="mr-3"> 緩慢但是完全獨立 (2)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq1" value="3" class="mr-3"> 需要幫助或是助行器 (3)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq1" value="4" class="mr-3"> 不能行走 (4)
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="question-group">
-                        <p class="font-medium text-gray-800 mb-3">2. 最近一周，您的步態困難影響日常活動和獨立做事嗎？</p>
-                        <div class="grid grid-cols-1 gap-2">
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq2" value="0" required class="mr-3"> 一點兒也不 (0)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq2" value="1" class="mr-3"> 輕度影響 (1)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq2" value="2" class="mr-3"> 中度影響 (2)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq2" value="3" class="mr-3"> 嚴重影響 (3)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq2" value="4" class="mr-3"> 不能行走 (4)
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="question-group">
-                        <p class="font-medium text-gray-800 mb-3">3. 走路過程中、轉身或剛開始走路時，有沒有雙腳黏住地面的感覺（凍結）？</p>
-                        <div class="grid grid-cols-1 gap-2">
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq3" value="0" required class="mr-3"> 從來沒有 (0)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq3" value="1" class="mr-3"> 極少 - 約1次/月 (1)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq3" value="2" class="mr-3"> 較少 - 約1次/周 (2)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq3" value="3" class="mr-3"> 經常 - 約1次/天 (3)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq3" value="4" class="mr-3"> 總是 - 只要走路就有 (4)
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="question-group">
-                        <p class="font-medium text-gray-800 mb-3">4. 最近一周，最長的一次凍結是多長時間？</p>
-                        <div class="grid grid-cols-1 gap-2">
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq4" value="0" required class="mr-3"> 從來沒有 (0)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq4" value="1" class="mr-3"> 持續1-2秒 (1)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq4" value="2" class="mr-3"> 持續3-10秒 (2)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq4" value="3" class="mr-3"> 持續11-30秒 (3)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq4" value="4" class="mr-3"> 超過30秒不能走路 (4)
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="question-group">
-                        <p class="font-medium text-gray-800 mb-3">5. 最近一周，您出現一次典型的啟動猶豫是多長時間（開始第一步時凍結）？</p>
-                        <div class="grid grid-cols-1 gap-2">
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq5" value="0" required class="mr-3"> 無 (0)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq5" value="1" class="mr-3"> 超過1秒開始行走 (1)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq5" value="2" class="mr-3"> 超過3秒開始行走 (2)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq5" value="3" class="mr-3"> 超過10秒開始行走 (3)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq5" value="4" class="mr-3"> 超過30秒開始行走 (4)
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="question-group">
-                        <p class="font-medium text-gray-800 mb-3">6. 最近一周，您出現一次典型的轉身猶豫是多長時間（轉身時凍結）？</p>
-                        <div class="grid grid-cols-1 gap-2">
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq6" value="0" required class="mr-3"> 無 (0)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq6" value="1" class="mr-3"> 持續1-2秒 (1)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq6" value="2" class="mr-3"> 持續3-10秒 (2)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq6" value="3" class="mr-3"> 持續11-30秒 (3)
-                            </label>
-                            <label class="flex items-center p-2 hover:bg-gray-50 rounded cursor-pointer">
-                                <input type="radio" name="fogq6" value="4" class="mr-3"> 持續超過30秒 (4)
-                            </label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 提交按鈕 -->
-            <div class="text-center mt-8">
-                <button type="submit" class="bg-blue-500 text-white px-8 py-3 rounded-lg hover:bg-blue-600 transition text-lg font-semibold flex items-center justify-center mx-auto">
-                    <i class="fas fa-paper-plane mr-2"></i>提交問卷
-                </button>
-            </div>
-        </form>
+    <div>
+      <label class="block font-medium">2. 骨質疏鬆症</label>
+      <label><input type="radio" name="fci2_osteoporosis" value="是" required> 是</label>
+      <label><input type="radio" name="fci2_osteoporosis" value="否"> 否</label>
     </div>
-
-    <!-- 導航按鈕 -->
-    <div class="nav-buttons">
-        <button id="prevSection" class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition hidden">
-            <i class="fas fa-arrow-left mr-2"></i>上一部分
-        </button>
-        <button id="nextSection" class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition">
-            下一部分<i class="fas fa-arrow-right ml-2"></i>
-        </button>
+    <div>
+      <label class="block font-medium">3. 哮喘</label>
+      <label><input type="radio" name="fci3_asthma" value="是" required> 是</label>
+      <label><input type="radio" name="fci3_asthma" value="否"> 否</label>
     </div>
-    
-    <script>
-        // 配置
-        const CONFIG = {
-            autoSave: true,
-            saveInterval: 2000, // 2秒自動保存
-            currentSessionId: 'survey_' + Date.now()
-        };
+    <div>
+      <label class="block font-medium">4. 慢性阻塞性肺病、急性呼吸窘迫綜合症或肺氣腫</label>
+      <label><input type="radio" name="fci4_copd" value="是" required> 是</label>
+      <label><input type="radio" name="fci4_copd" value="否"> 否</label>
+    </div>
+    <div>
+      <label class="block font-medium">5. 心絞痛</label>
+      <label><input type="radio" name="fci5_angina" value="是" required> 是</label>
+      <label><input type="radio" name="fci5_angina" value="否"> 否</label>
+    </div>
+    <div>
+      <label class="block font-medium">6. 充血性心力衰竭（或心臟病）</label>
+      <label><input type="radio" name="fci6_heart_failure" value="是" required> 是</label>
+      <label><input type="radio" name="fci6_heart_failure" value="否"> 否</label>
+    </div>
+    <div>
+      <label class="block font-medium">7. 心肌梗塞（心臟病發）</label>
+      <label><input type="radio" name="fci7_heart_attack" value="是" required> 是</label>
+      <label><input type="radio" name="fci7_heart_attack" value="否"> 否</label>
+    </div>
+    <div>
+      <label class="block font-medium">8. 神經退行性疾病（如帕金森病或認知症）*</label>
+      <label><input type="radio" name="fci8_neuro_disease" value="是" required> 是</label>
+      <label><input type="radio" name="fci8_neuro_disease" value="否"> 否</label>
+      <p class="text-sm text-gray-500">*註：本研究針對帕金森病患者，請如實回答是否有其他神經退行性疾病（如認知症）。</p>
+    </div>
+    <div>
+      <label class="block font-medium">10. 週邊血管疾病</label>
+      <label><input type="radio" name="fci10_peripheral_vascular" value="是" required> 是</label>
+      <label><input type="radio" name="fci10_peripheral_vascular" value="否"> 否</label>
+    </div>
+    <div>
+      <label class="block font-medium">11. 糖尿病（第一型或第二型）</label>
+      <label><input type="radio" name="fci11_diabetes" value="是" required> 是</label>
+      <label><input type="radio" name="fci11_diabetes" value="否"> 否</label>
+    </div>
+    <div>
+      <label class="block font-medium">12. 上消化道疾病（潰瘍、橫膈膜疝氣或胃食道逆流）</label>
+      <label><input type="radio" name="fci12_gastro" value="是" required> 是</label>
+      <label><input type="radio" name="fci12_gastro" value="否"> 否</label>
+    </div>
+    <div>
+      <label class="block font-medium">16. 聽力障礙（即使使用助聽器仍嚴重聽力困難）</label>
+      <label><input type="radio" name="fci16_hearing" value="是" required> 是</label>
+      <label><input type="radio" name="fci16_hearing" value="否"> 否</label>
+    </div>
+    <div>
+      <label class="block font-medium">17. 退行性椎間盤疾病（背部疾病、脊柱狹窄或嚴重慢性背痛）</label>
+      <label><input type="radio" name="fci17_disc_disease" value="是" required> 是</label>
+      <label><input type="radio" name="fci17_disc_disease" value="否"> 否</label>
+    </div>
+    <div>
+      <label class="block font-medium">18. 肥胖（BMI > 30）（BMI = 體重(公斤) / 身高(厘米)²）</label>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block">身高 (厘米)</label>
+          <input type="number" name="fci18_height" step="0.01" required min="0" class="w-full p-2 border rounded">
+        </div>
+        <div>
+          <label class="block">體重 (公斤)</label>
+          <input type="number" name="fci18_weight" step="0.1" required min="0" class="w-full p-2 border rounded">
+        </div>
+      </div> 
+      <div id="bmiResult" class="mt-2 p-2 rounded text-sm font-medium" style="display: none;">BMI: <span id="bmiValue">—</span></div>
+      <label><input type="radio" name="fci18_obesity" value="是" required> 是</label>
+      <label><input type="radio" name="fci18_obesity" value="否"> 否</label>
+    </div>
+  </div>
 
-        // 設定：Google Sheets Web App URL（替換為你的實際URL）
-        const SHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbznrm6mCYTnmTdHap9IigMAcS9nED91uPWXx3Ya0BdCZ2e6XIiocgtQ-66ktCdi3RB9cg/exec';
+  <h2 class="text-xl font-semibold mb-2">醫院焦慮及抑鬱量表 (HADS)</h2>
+  <p class="mb-4">請閱讀下列每題，並選擇最接近你過去一星期的情緒狀況的選項。</p>
+  <div class="space-y-4">
+    <div>
+      <p class="font-medium">1. 我感到神經緊張</p>
+      <label><input type="radio" name="hads1" value="3" required> 大部份時候感到 (3)</label>
+      <label><input type="radio" name="hads1" value="2"> 很多時候感到 (2)</label>
+      <label><input type="radio" name="hads1" value="1"> 有時候、間中感到 (1)</label>
+      <label><input type="radio" name="hads1" value="0"> 完全不感到 (0)</label>
+    </div>
+    <div>
+      <p class="font-medium">2. 我依然享受我以前享受的事物</p>
+      <label><input type="radio" name="hads2" value="0" required> 肯定和以前一樣 (0)</label>
+      <label><input type="radio" name="hads2" value="1"> 有點不及以前 (1)</label>
+      <label><input type="radio" name="hads2" value="2"> 只及以前少許 (2)</label>
+      <label><input type="radio" name="hads2" value="3"> 和以前差得極遠 (3)</label>
+    </div>
+    <div>
+      <p class="font-medium">3. 我有一種驚恐，好像有些可怕的事情會發生</p>
+      <label><input type="radio" name="hads3" value="3" required> 很肯定有，而且相當厲害 (3)</label>
+      <label><input type="radio" name="hads3" value="2"> 有，但不太厲害 (2)</label>
+      <label><input type="radio" name="hads3" value="1"> 有少許，但不令我擔心 (1)</label>
+      <label><input type="radio" name="hads3" value="0"> 完全沒有 (0)</label>
+    </div>
+    <div>
+      <p class="font-medium">4. 我能看到事物有趣的一面並且會心微笑</p>
+      <label><input type="radio" name="hads4" value="0" required> 和以前一樣 (0)</label>
+      <label><input type="radio" name="hads4" value="1"> 有點不如以前 (1)</label>
+      <label><input type="radio" name="hads4" value="2"> 肯定不如以前 (2)</label>
+      <label><input type="radio" name="hads4" value="3"> 完全不能 (3)</label>
+    </div>
+    <div>
+      <p class="font-medium">5. 煩惱的念頭在我腦海中浮現</p>
+      <label><input type="radio" name="hads5" value="3" required> 絕大部份時候 (3)</label>
+      <label><input type="radio" name="hads5" value="2"> 很多時候 (2)</label>
+      <label><input type="radio" name="hads5" value="1"> 有時候，但不太常 (1)</label>
+      <label><input type="radio" name="hads5" value="0"> 只是間中 (0)</label>
+    </div>
+    <div>
+      <p class="font-medium">6. 我感到高興</p>
+      <label><input type="radio" name="hads6" value="3" required> 完全不感到 (3)</label>
+      <label><input type="radio" name="hads6" value="2"> 不時常感到 (2)</label>
+      <label><input type="radio" name="hads6" value="1"> 有時候感到 (1)</label>
+      <label><input type="radio" name="hads6" value="0"> 大部份時候感到 (0)</label>
+    </div>
+    <div>
+      <p class="font-medium">7. 我能安坐並感到鬆弛</p>
+      <label><input type="radio" name="hads7" value="0" required> 肯定能夠 (0)</label>
+      <label><input type="radio" name="hads7" value="1"> 通常能夠 (1)</label>
+      <label><input type="radio" name="hads7" value="2"> 不時常能夠 (2)</label>
+      <label><input type="radio" name="hads7" value="3"> 完全不能 (3)</label>
+    </div>
+    <div>
+      <p class="font-medium">8. 我感到缺乏衝勁，整個人都慢下來</p>
+      <label><input type="radio" name="hads8" value="3" required> 差不多全部時候 (3)</label>
+      <label><input type="radio" name="hads8" value="2"> 非常多時候 (2)</label>
+      <label><input type="radio" name="hads8" value="1"> 有時候 (1)</label>
+      <label><input type="radio" name="hads8" value="0"> 完全沒有 (0)</label>
+    </div>
+    <div>
+      <p class="font-medium">9. 我有一種忐忑不安的驚恐</p>
+      <label><input type="radio" name="hads9" value="0" required> 完全沒有 (0)</label>
+      <label><input type="radio" name="hads9" value="1"> 間中有 (1)</label>
+      <label><input type="radio" name="hads9" value="2"> 相當多時候有 (2)</label>
+      <label><input type="radio" name="hads9" value="3"> 很常有 (3)</label>
+    </div>
+    <div>
+      <p class="font-medium">10. 我對自己的儀容已失去興趣</p>
+      <label><input type="radio" name="hads10" value="3" required> 肯定失去 (3)</label>
+      <label><input type="radio" name="hads10" value="2"> 比我應該關心的少 (2)</label>
+      <label><input type="radio" name="hads10" value="1"> 可能比我以前關心的少 (1)</label>
+      <label><input type="radio" name="hads10" value="0"> 我像以前一樣關心 (0)</label>
+    </div>
+    <div>
+      <p class="font-medium">11. 我感到不能安靜，像要不停地走動</p>
+      <label><input type="radio" name="hads11" value="3" required> 很強烈 (3)</label>
+      <label><input type="radio" name="hads11" value="2"> 相當強烈 (2)</label>
+      <label><input type="radio" name="hads11" value="1"> 不太強烈 (1)</label>
+      <label><input type="radio" name="hads11" value="0"> 完全沒有 (0)</label>
+    </div>
+    <div>
+      <p class="font-medium">12. 我對未來的事抱有熱切期望</p>
+      <label><input type="radio" name="hads12" value="0" required> 和以前一樣 (0)</label>
+      <label><input type="radio" name="hads12" value="1"> 較為不如以前 (1)</label>
+      <label><input type="radio" name="hads12" value="2"> 肯定不如以前 (2)</label>
+      <label><input type="radio" name="hads12" value="3"> 絕無僅有 (3)</label>
+    </div>
+    <div>
+      <p class="font-medium">13. 我突然感到驚惶失措</p>
+      <label><input type="radio" name="hads13" value="3" required> 非常多時候 (3)</label>
+      <label><input type="radio" name="hads13" value="2"> 相當多時候 (2)</label>
+      <label><input type="radio" name="hads13" value="1"> 不太多時候 (1)</label>
+      <label><input type="radio" name="hads13" value="0"> 完全沒有 (0)</label>
+    </div>
+    <div>
+      <p class="font-medium">14. 我能享受喜歡的書、電台或電視節目</p>
+      <label><input type="radio" name="hads14" value="0" required> 經常能夠 (0)</label>
+      <label><input type="radio" name="hads14" value="1"> 有時候能夠 (1)</label>
+      <label><input type="radio" name="hads14" value="2"> 不常能夠 (2)</label>
+      <label><input type="radio" name="hads14" value="3"> 絕少能夠 (3)</label>
+    </div>
+  </div>
 
-        // DOM 元素
-        const form = document.getElementById('surveyForm');
-        const downloadBtn = document.getElementById('download');
-        const loadProgressBtn = document.getElementById('loadProgress');
-        const clearProgressBtn = document.getElementById('clearProgress');
-        const prevSectionBtn = document.getElementById('prevSection');
-        const nextSectionBtn = document.getElementById('nextSection');
-        const progressBar = document.getElementById('progressBar');
-        const statusMessage = document.getElementById('statusMessage');
-        const sectionDots = document.querySelectorAll('.section-dot');
+      <!-- PDQ-39 Questionnaire -->
+      <h2 class="text-xl font-semibold mb-2">帕金森病生活質量問卷 (PDQ-39)</h2>
+      <p class="mb-4">在過去一個月中，帕金森病對你在下列各項的日常生活影響有多少：</p>
+      <div class="space-y-4">
+        <div>
+          <p class="font-medium">1. 做從前喜歡的消遣活動時有困難</p>
+          <label><input type="radio" name="pdq1" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq1" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq1" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq1" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq1" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">2. 做家居工作 (如煮飯、家務) 時有困難</p>
+          <label><input type="radio" name="pdq2" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq2" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq2" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq2" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq2" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">3. 購物後攜帶所購物品時有困難</p>
+          <label><input type="radio" name="pdq3" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq3" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq3" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq3" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq3" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">4. 步行半哩 (大約800米) 時有困難</p>
+          <label><input type="radio" name="pdq4" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq4" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq4" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq4" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq4" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">5. 步行一百碼 (大約90米) 時有困難</p>
+          <label><input type="radio" name="pdq5" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq5" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq5" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq5" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq5" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">6. 在家中自由走動時有困難</p>
+          <label><input type="radio" name="pdq6" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq6" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq6" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq6" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq6" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">7. 在公眾場所內走動時有困難</p>
+          <label><input type="radio" name="pdq7" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq7" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq7" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq7" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq7" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">8. 外出時需要別人陪伴</p>
+          <label><input type="radio" name="pdq8" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq8" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq8" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq8" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq8" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">9. 在公眾場所內很怕或很擔心會跌倒</p>
+          <label><input type="radio" name="pdq9" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq9" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq9" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq9" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq9" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">10. 留在家中的時間比起自己希望的為長</p>
+          <label><input type="radio" name="pdq10" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq10" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq10" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq10" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq10" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">11. 替自己沐浴時有困難</p>
+          <label><input type="radio" name="pdq11" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq11" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq11" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq11" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq11" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">12. 替自己穿衣時有困難</p>
+          <label><input type="radio" name="pdq12" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq12" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq12" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq12" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq12" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">13. 替自己扣鈕或縛鞋帶時有困難</p>
+          <label><input type="radio" name="pdq13" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq13" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq13" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq13" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq13" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">14. 要清楚地書寫時有困難</p>
+          <label><input type="radio" name="pdq14" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq14" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq14" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq14" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq14" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">15. 用刀切食物時有困難</p>
+          <label><input type="radio" name="pdq15" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq15" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq15" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq15" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq15" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">16. 拿起水杯要保持不倒瀉水會有困難</p>
+          <label><input type="radio" name="pdq16" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq16" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq16" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq16" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq16" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">17. 感到抑鬱</p>
+          <label><input type="radio" name="pdq17" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq17" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq17" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq17" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq17" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">18. 感到孤單和被隔離</p>
+          <label><input type="radio" name="pdq18" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq18" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq18" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq18" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq18" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">19. 感覺想哭或流淚</p>
+          <label><input type="radio" name="pdq19" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq19" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq19" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq19" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq19" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">20. 感到憤怒或苦澀</p>
+          <label><input type="radio" name="pdq20" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq20" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq20" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq20" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq20" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">21. 感到焦慮</p>
+          <label><input type="radio" name="pdq21" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq21" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq21" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq21" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq21" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">22. 替自己的將來感到憂慮</p>
+          <label><input type="radio" name="pdq22" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq22" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq22" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq22" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq22" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">23. 不想讓他人知道你有帕金森病</p>
+          <label><input type="radio" name="pdq23" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq23" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq23" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq23" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq23" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">24. 盡量避免在公眾場合飲食</p>
+          <label><input type="radio" name="pdq24" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq24" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq24" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq24" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq24" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">25. 因自己患有帕金森病，在公眾場合會感到尷尬</p>
+          <label><input type="radio" name="pdq25" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq25" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq25" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq25" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq25" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">26. 為別人對自己患病所作出的反應而感到擔心</p>
+          <label><input type="radio" name="pdq26" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq26" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq26" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq26" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq26" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">27. 親密的人際關係因患病而出現問題</p>
+          <label><input type="radio" name="pdq27" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq27" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq27" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq27" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq27" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">28. 缺乏配偶或伴侶所給予的支持 (如無配偶或伴侶，請選「從來沒有」)</p>
+          <label><input type="radio" name="pdq28" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq28" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq28" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq28" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq28" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">29. 缺乏家庭或摯友所給予的支持</p>
+          <label><input type="radio" name="pdq29" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq29" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq29" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq29" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq29" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">30. 在日間無故地睡著</p>
+          <label><input type="radio" name="pdq30" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq30" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq30" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq30" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq30" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">31. 集中精神時有困難 (如正在閱讀或觀看電視)</p>
+          <label><input type="radio" name="pdq31" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq31" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq31" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq31" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq31" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">32. 覺得自己記憶力差</p>
+          <label><input type="radio" name="pdq32" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq32" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq32" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq32" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq32" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">33. 有發惡夢或出現幻覺的情況</p>
+          <label><input type="radio" name="pdq33" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq33" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq33" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq33" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq33" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">34. 說話時有困難</p>
+          <label><input type="radio" name="pdq34" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq34" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq34" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq34" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq34" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">35. 覺得自己不能與別人正常地溝通</p>
+          <label><input type="radio" name="pdq35" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq35" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq35" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq35" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq35" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">36. 覺得被別人忽視</p>
+          <label><input type="radio" name="pdq36" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq36" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq36" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq36" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq36" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">37. 肌肉有痛性抽筋</p>
+          <label><input type="radio" name="pdq37" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq37" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq37" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq37" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq37" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">38. 關節或身體部分覺得疼痛</p>
+          <label><input type="radio" name="pdq38" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq38" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq38" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq38" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq38" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">39. 對外界環境的冷或熱感到很不舒服 (例：進出空氣調節房間)</p>
+          <label><input type="radio" name="pdq39" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="pdq39" value="1"> 偶然 (1)</label>
+          <label><input type="radio" name="pdq39" value="2"> 有時候 (2)</label>
+          <label><input type="radio" name="pdq39" value="3"> 經常 (3)</label>
+          <label><input type="radio" name="pdq39" value="4"> 完全做不到或所有時候 (4)</label>
+        </div>
+      </div>
 
-        // 狀態管理
-        let currentSection = 0;
-        const sections = ['basic', 'medical', 'fci', 'hads', 'pdq', 'fogq'];
-        let formData = {};
-        let autoSaveTimer = null;
-        let responses = [];
+      <!-- FOGQ Questionnaire -->
+      <h2 class="text-xl font-semibold mb-2">步態凍結問卷 (FOGQ)</h2>
+  <p class="mb-4">請觀看以下影片以了解步態凍結的相關信息，然後回答問題。</p>
+  <div id="loading" class="text-center mb-4">影片載入中，請稍候...</div>
+  <iframe id="fogqVideo" width="100%" height="315" src="https://www.youtube.com/embed/TSoD3ecvzu4?rel=0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+  <div class="space-y-4">
+        <div>
+          <p class="font-medium">1. 最近一周，在您狀態最差的時候走路</p>
+          <label><input type="radio" name="fogq1" value="0" required> 正常 (0)</label>
+          <label><input type="radio" name="fogq1" value="1"> 基本正常 - 稍微緩慢 (1)</label>
+          <label><input type="radio" name="fogq1" value="2"> 緩慢但是完全獨立 (2)</label>
+          <label><input type="radio" name="fogq1" value="3"> 需要幫助或是助行器 (3)</label>
+          <label><input type="radio" name="fogq1" value="4"> 不能行走 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">2. 最近一周，您的步態困難影響日常活動和獨立做事嗎？</p>
+          <label><input type="radio" name="fogq2" value="0" required> 一點兒也不 (0)</label>
+          <label><input type="radio" name="fogq2" value="1"> 輕度影響 (1)</label>
+          <label><input type="radio" name="fogq2" value="2"> 中度影響 (2)</label>
+          <label><input type="radio" name="fogq2" value="3"> 嚴重影響 (3)</label>
+          <label><input type="radio" name="fogq2" value="4"> 不能行走 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">3. 走路過程中、轉身或剛開始走路時，有沒有雙腳黏住地面的感覺（凍結）？</p>
+          <label><input type="radio" name="fogq3" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="fogq3" value="1"> 極少 - 約1次/月 (1)</label>
+          <label><input type="radio" name="fogq3" value="2"> 較少 - 約1次/周 (2)</label>
+          <label><input type="radio" name="fogq3" value="3"> 經常 - 約1次/天 (3)</label>
+          <label><input type="radio" name="fogq3" value="4"> 總是 - 只要走路就有 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">4. 最近一周，最長的一次凍結是多長時間？</p>
+          <label><input type="radio" name="fogq4" value="0" required> 從來沒有 (0)</label>
+          <label><input type="radio" name="fogq4" value="1"> 持續1-2秒 (1)</label>
+          <label><input type="radio" name="fogq4" value="2"> 持續3-10秒 (2)</label>
+          <label><input type="radio" name="fogq4" value="3"> 持續11-30秒 (3)</label>
+          <label><input type="radio" name="fogq4" value="4"> 超過30秒不能走路 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">5. 最近一周，您出現一次典型的啟動猶豫是多長時間（開始第一步時凍結）？</p>
+          <label><input type="radio" name="fogq5" value="0" required> 無 (0)</label>
+          <label><input type="radio" name="fogq5" value="1"> 超過1秒開始行走 (1)</label>
+          <label><input type="radio" name="fogq5" value="2"> 超過3秒開始行走 (2)</label>
+          <label><input type="radio" name="fogq5" value="3"> 超過10秒開始行走 (3)</label>
+          <label><input type="radio" name="fogq5" value="4"> 超過30秒開始行走 (4)</label>
+        </div>
+        <div>
+          <p class="font-medium">6. 最近一周，您出現一次典型的轉身猶豫是多長時間（轉身時凍結）？</p>
+          <label><input type="radio" name="fogq6" value="0" required> 無 (0)</label>
+          <label><input type="radio" name="fogq6" value="1"> 持續1-2秒 (1)</label>
+          <label><input type="radio" name="fogq6" value="2"> 持續3-10秒 (2)</label>
+          <label><input type="radio" name="fogq6" value="3"> 持續11-30秒 (3)</label>
+          <label><input type="radio" name="fogq6" value="4"> 持續超過30秒 (4)</label>
+        </div>
+      </div>
+ <button type="submit" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">提交</button>
+</form>
+</div> <script>
+  // 設定：是否啟用 Google Sheets（留空則僅本地）
+  const SHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbznrm6mCYTnmTdHap9IigMAcS9nED91uPWXx3Ya0BdCZ2e6XIiocgtQ-66ktCdi3RB9cg/exec'; // 若用，填入 https://script.google.com/macros/s/xxx/exec
 
-        // 初始化函數
-        function init() {
-            setupEventListeners();
-            loadProgress();
-            updateProgressBar();
-            updateNavigation();
-            
-            // 設置影片加載監聽
-            const videoIframe = document.getElementById('fogqVideo');
-            const loadingDiv = document.getElementById('loading');
-            if (videoIframe && loadingDiv) {
-                videoIframe.addEventListener('load', () => {
-                    loadingDiv.style.display = 'none';
-                    videoIframe.style.display = 'block';
-                });
-            }
+  // DOM 取得
+  const form = document.getElementById('surveyForm');
+  const downloadBtn = document.getElementById('download');
+  const loadProgressBtn = document.getElementById('loadProgress');
+  const clearProgressBtn = document.getElementById('clearProgress');
+  const loadingDiv = document.getElementById('loading');
+  const videoIframe = document.getElementById('fogqVideo');
+  const bmiResult = document.getElementById('bmiResult');
+  const bmiValue = document.getElementById('bmiValue');
+  const heightInput = form.querySelector('[name="fci18_height"]');
+  const weightInput = form.querySelector('[name="fci18_weight"]');
+  const obesityYes = form.querySelector('[name="fci18_obesity"][value="是"]');
+  const obesityNo = form.querySelector('[name="fci18_obesity"][value="否"]');
+  const statusDiv = document.getElementById('status');
 
-            // 檢查是否有已保存的數據
-            try {
-                responses = JSON.parse(localStorage.getItem('surveyResponses')) || [];
-                if (responses.length > 0) {
-                    downloadBtn.classList.remove('hidden');
-                }
-            } catch {
-                responses = [];
-            }
-        }
+  // 顯示短暫狀態（淡出）
+  function showStatus(text, type='ok') {
+    if (!statusDiv) return;
+    statusDiv.textContent = text;
+    statusDiv.className = 'p-2 rounded text-sm ' + (type === 'error' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800');
+    statusDiv.style.opacity = '1';
+    clearTimeout(showStatus._t);
+    showStatus._t = setTimeout(()=> { statusDiv.style.opacity = '0'; }, 2800);
+  }
 
-        // 事件監聽器設置
-        function setupEventListeners() {
-            // 表單輸入自動保存
-            if (CONFIG.autoSave) {
-                form.addEventListener('input', debounce(saveProgress, CONFIG.saveInterval));
-                form.addEventListener('change', debounce(saveProgress, CONFIG.saveInterval));
-            }
+  // iframe 載入後隱藏 loading
+  if (videoIframe && loadingDiv) {
+    videoIframe.addEventListener('load', () => { loadingDiv.style.display = 'none'; });
+  }
 
-            // BMI 計算
-            const heightInput = form.querySelector('[name="fci18_height"]');
-            const weightInput = form.querySelector('[name="fci18_weight"]');
-            if (heightInput && weightInput) {
-                heightInput.addEventListener('input', updateBMI);
-                weightInput.addEventListener('input', updateBMI);
-            }
+  // 取已保存的 responses
+  let responses = [];
+  try { responses = JSON.parse(localStorage.getItem('surveyResponses')) || []; } catch { responses = []; }
 
-            // 按鈕事件
-            loadProgressBtn.addEventListener('click', loadProgress);
-            clearProgressBtn.addEventListener('click', clearProgress);
-            downloadBtn.addEventListener('click', downloadData);
-            prevSectionBtn.addEventListener('click', goToPreviousSection);
-            nextSectionBtn.addEventListener('click', goToNextSection);
-            form.addEventListener('submit', handleSubmit);
+  // 保存進度
+  function saveProgress() {
+    const fd = new FormData(form);
+    const progress = {};
+    for (const [key, value] of fd.entries()) progress[key] = value;
+    localStorage.setItem('surveyProgress', JSON.stringify(progress));
+    showStatus('已自動儲存');
+  }
+  form.addEventListener('input', saveProgress);
+  form.addEventListener('change', saveProgress);
 
-            // 章節導航點擊
-            sectionDots.forEach((dot, index) => {
-                dot.addEventListener('click', () => goToSection(index));
-            });
-
-            // 滾動檢測當前章節
-            window.addEventListener('scroll', updateCurrentSection);
-        }
-
-        // 工具函數
-        function debounce(func, wait) {
-            let timeout;
-            return function executedFunction(...args) {
-                const later = () => {
-                    clearTimeout(timeout);
-                    func(...args);
-                };
-                clearTimeout(timeout);
-                timeout = setTimeout(later, wait);
-            };
-        }
-
-        function showStatus(message, type = 'info') {
-            statusMessage.textContent = message;
-            statusMessage.className = `status-message status-${type}`;
-            statusMessage.style.opacity = '1';
-            
-            setTimeout(() => {
-                statusMessage.style.opacity = '0';
-            }, 3000);
-        }
-
-        // 進度管理
-        function saveProgress() {
-            const formData = new FormData(form);
-            const progress = {};
-            for (const [key, value] of formData.entries()) {
-                progress[key] = value;
-            }
-            
-            localStorage.setItem('surveyProgress', JSON.stringify(progress));
-            updateProgressBar();
-            updateSectionCompletion();
-        }
-
-        function loadProgress() {
-            let progress = null;
-            try {
-                progress = JSON.parse(localStorage.getItem('surveyProgress'));
-            } catch (e) {
-                console.error('載入進度失敗:', e);
-            }
-            
-            if (!progress) {
-                showStatus('無保存的進度！', 'error');
-                return;
-            }
-            
-            for (const [key, value] of Object.entries(progress)) {
-                const elements = form.querySelectorAll(`[name="${key}"]`);
-                if (elements.length === 0) continue;
-                
-                if (elements[0].type === 'radio' || elements[0].type === 'checkbox') {
-                    const target = form.querySelector(`[name="${key}"][value="${value}"]`);
-                    if (target) target.checked = true;
-                } else {
-                    elements[0].value = value;
-                }
-            }
-            
-            updateBMI();
-            updateProgressBar();
-            updateSectionCompletion();
-            showStatus('已載入上次進度！', 'success');
-        }
-
-        function clearProgress() {
-            localStorage.removeItem('surveyProgress');
-            form.reset();
-            updateProgressBar();
-            updateSectionCompletion();
-            showStatus('進度已清除！', 'success');
-        }
-
-// 增强的BMI计算函数
-function updateBMI() {
-    const heightInput = form.querySelector('[name="fci18_height"]');
-    const weightInput = form.querySelector('[name="fci18_weight"]');
-    const bmiResult = document.getElementById('bmiResult');
-    const bmiValue = document.getElementById('bmiValue');
-    const bmiCategory = document.getElementById('bmiCategory');
-    const obesityYes = form.querySelector('[name="fci18_obesity"][value="是"]');
-    const obesityNo = form.querySelector('[name="fci18_obesity"][value="否"]');
-    
-    if (!heightInput || !weightInput || !bmiResult) return;
-    
-    const height = parseFloat(heightInput.value);
-    const weight = parseFloat(weightInput.value);
-    
-    // 重置样式
-    bmiResult.className = 'mt-3 p-3 rounded text-sm font-medium hidden';
-    bmiCategory.className = 'mt-1';
-    
-    if (isNaN(height) || isNaN(weight) || height <= 0 || weight <= 0) {
-        bmiResult.style.display = 'none';
-        return;
+  // 載入進度
+  loadProgressBtn.addEventListener('click', () => {
+    let progress = null;
+    try { progress = JSON.parse(localStorage.getItem('surveyProgress')); } catch {}
+    if (!progress) { alert('無保存的進度！'); return; }
+    for (const [key, value] of Object.entries(progress)) {
+      const nodes = form.querySelectorAll(`[name="${key}"]`);
+      if (nodes.length === 0) continue;
+      if (nodes[0].type === 'radio' || nodes[0].type === 'checkbox') {
+        const target = form.querySelector(`[name="${key}"][value="${value}"]`);
+        if (target) target.checked = true;
+      } else {
+        nodes[0].value = value;
+      }
     }
-    
-    // 计算BMI (体重kg / 身高m²)
-    const heightInMeters = height / 100;
-    const bmi = weight / (heightInMeters * heightInMeters);
-    const roundedBMI = bmi.toFixed(1);
-    
-    // 确定BMI类别
-    let category, categoryClass, isObese;
-    
-    if (bmi < 18.5) {
-        category = '体重过轻';
-        categoryClass = 'bmi-underweight';
-        isObese = false;
-    } else if (bmi < 24) {
-        category = '正常范围';
-        categoryClass = 'bmi-normal';
-        isObese = false;
-    } else if (bmi < 27) {
-        category = '过重';
-        categoryClass = 'bmi-overweight';
-        isObese = false;
-    } else if (bmi < 30) {
-        category = '轻度肥胖';
-        categoryClass = 'bmi-overweight';
-        isObese = false;
-    } else {
-        category = '肥胖 (BMI ≥ 30)';
-        categoryClass = 'bmi-obese';
-        isObese = true;
+    updateBMI();
+    alert('已載入上次進度！');
+  });
+
+  // 頁面載入時自動詢問載入進度
+  window.addEventListener('load', () => {
+    let progress = null;
+    try { progress = JSON.parse(localStorage.getItem('surveyProgress')); } catch {}
+    if (progress && Object.keys(progress).length > 0) {
+      if (confirm('檢測到未完成的問卷，是否載入上次進度？')) {
+        loadProgressBtn.click();
+      }
     }
-    
-    // 更新显示
-    bmiValue.textContent = `${roundedBMI}`;
-    bmiCategory.textContent = category;
-    bmiResult.className = `mt-3 p-3 rounded text-sm font-medium ${categoryClass}`;
-    bmiResult.style.display = 'block';
-    
-    // 自动设置肥胖选项
-    if (obesityYes && obesityNo) {
-        if (isObese) {
-            obesityYes.checked = true;
-        } else {
-            obesityNo.checked = true;
-        }
+    // 下載按鈕隨時可用（若無資料會提示）
+  });
+
+  // 清除進度
+  clearProgressBtn.addEventListener('click', () => {
+    localStorage.removeItem('surveyProgress');
+    form.reset();
+    updateBMI();
+    alert('進度已清除！');
+  });
+
+  // BMI 更新（即時 + 顏色類別）
+  function updateBMI() {
+    const h = parseFloat(heightInput?.value || 0);
+    const w = parseFloat(weightInput?.value || 0);
+    if (bmiResult) bmiResult.style.display = 'none';
+    if (h <= 0 || w <= 0) return;
+
+    const bmi = w / Math.pow(h / 100, 2);
+    const rounded = bmi.toFixed(1);
+    let category = '', categoryClass = '';
+
+    if (bmi < 18.5) { category = '體重過輕'; categoryClass = 'bmi-underweight'; }
+    else if (bmi < 24) { category = '正常範圍'; categoryClass = 'bmi-normal'; }
+    else if (bmi < 27) { category = '過重'; categoryClass = 'bmi-overweight'; }
+    else if (bmi < 30) { category = '輕度肥胖'; categoryClass = 'bmi-overweight'; }
+    else if (bmi < 35) { category = '中度肥胖'; categoryClass = 'bmi-obese'; }
+    else { category = '重度肥胖'; categoryClass = 'bmi-obese'; }
+
+    if (bmiValue) bmiValue.textContent = `${rounded} - ${category}`;
+    if (bmiResult) {
+      bmiResult.className = `bmi-result ${categoryClass}`;
+      bmiResult.style.display = 'block';
     }
-    
-    // 触发自动保存
+    if (bmi > 30) { if (obesityYes) obesityYes.checked = true; }
+    else { if (obesityNo) obesityNo.checked = true; }
     saveProgress();
-}
+  }
+  if (heightInput) heightInput.addEventListener('input', updateBMI);
+  if (weightInput) weightInput.addEventListener('input', updateBMI);
 
-        // 進度條更新
-        function updateProgressBar() {
-            const formData = new FormData(form);
-            let filledFields = 0;
-            let totalFields = 0;
-            
-            // 計算表單字段
-            const inputs = form.querySelectorAll('input, select, textarea');
-            inputs.forEach(input => {
-                if (input.required || input.value) {
-                    totalFields++;
-                    if (input.value && input.type !== 'radio' && input.type !== 'checkbox') {
-                        filledFields++;
-                    } else if ((input.type === 'radio' || input.type === 'checkbox') && input.checked) {
-                        filledFields++;
-                    }
-                }
-            });
-            
-            const progress = totalFields > 0 ? (filledFields / totalFields) * 100 : 0;
-            progressBar.style.width = `${progress}%`;
-        }
+  // CSV 轉義
+  function csvEscape(val) {
+    if (val == null) return '';
+    const s = String(val);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }
 
-        // 章節完成狀態
-        function updateSectionCompletion() {
-            sectionDots.forEach((dot, index) => {
-                const sectionId = sections[index];
-                const sectionElement = document.getElementById(`section-${sectionId}`);
-                const inputs = sectionElement.querySelectorAll('input[required], select[required]');
-                let completed = true;
-                
-                inputs.forEach(input => {
-                    if (input.type === 'radio') {
-                        const name = input.name;
-                        const checked = sectionElement.querySelector(`input[name="${name}"]:checked`);
-                        if (!checked) completed = false;
-                    } else if (!input.value) {
-                        completed = false;
-                    }
-                });
-                
-                dot.classList.toggle('completed', completed);
-            });
-        }
+  // 打包 response
+  function buildResponse(fd) {
+    const fciTotal =
+      Number(fd.get('fci1_arthritis') === '是') +
+      Number(fd.get('fci2_osteoporosis') === '是') +
+      Number(fd.get('fci3_asthma') === '是') +
+      Number(fd.get('fci4_copd') === '是') +
+      Number(fd.get('fci5_angina') === '是') +
+      Number(fd.get('fci6_heart_failure') === '是') +
+      Number(fd.get('fci7_heart_attack') === '是') +
+      Number(fd.get('fci8_neuro_disease') === '是') +
+      Number(fd.get('fci10_peripheral_vascular') === '是') +
+      Number(fd.get('fci11_diabetes') === '是') +
+      Number(fd.get('fci12_gastro') === '是') +
+      Number(fd.get('fci16_hearing') === '是') +
+      Number(fd.get('fci17_disc_disease') === '是') +
+      Number(fd.get('fci18_obesity') === '是');
 
-        // 導航功能
-        function goToSection(index) {
-            if (index < 0 || index >= sections.length) return;
-            
-            currentSection = index;
-            const sectionId = sections[index];
-            const element = document.getElementById(`section-${sectionId}`);
-            
-            element.scrollIntoView({ behavior: 'smooth' });
-            updateNavigation();
-            updateSectionDots();
-        }
+    const hadsAnxiety = ['hads1','hads3','hads5','hads7','hads9','hads11','hads13']
+      .reduce((s,k)=>s+(parseInt(fd.get(k),10)||0),0);
+    const hadsDepression = ['hads2','hads4','hads6','hads8','hads10','hads12','hads14']
+      .reduce((s,k)=>s+(parseInt(fd.get(k),10)||0),0);
 
-        function goToPreviousSection() {
-            goToSection(currentSection - 1);
-        }
+    const resp = {
+      timestamp: new Date().toISOString(),
+      id: responses.length + 1,
+      name: fd.get('name'), // 建議移除，見隱私部分
+      age: fd.get('age'),
+      diagnosisYear: fd.get('diagnosisYear'),
+      educationYears: fd.get('educationYears'),
+      dominantHand: fd.get('dominantHand'),
+      implants: fd.get('implants'),
+      wheelchair: fd.get('wheelchair'),
+      medFirstTime: fd.get('medFirstTime'),
+      medDuration: fd.get('medDuration'),
+      medFrequency: fd.get('medFrequency'),
+      training1: fd.get('training1'),
+      training2: fd.get('training2'),
+      training3: fd.get('training3'),
+      fci1_arthritis: fd.get('fci1_arthritis'),
+      fci2_osteoporosis: fd.get('fci2_osteoporosis'),
+      fci3_asthma: fd.get('fci3_asthma'),
+      fci4_copd: fd.get('fci4_copd'),
+      fci5_angina: fd.get('fci5_angina'),
+      fci6_heart_failure: fd.get('fci6_heart_failure'),
+      fci7_heart_attack: fd.get('fci7_heart_attack'),
+      fci8_neuro_disease: fd.get('fci8_neuro_disease'),
+      fci10_peripheral_vascular: fd.get('fci10_peripheral_vascular'),
+      fci11_diabetes: fd.get('fci11_diabetes'),
+      fci12_gastro: fd.get('fci12_gastro'),
+      fci16_hearing: fd.get('fci16_hearing'),
+      fci17_disc_disease: fd.get('fci17_disc_disease'),
+      fci18_height: fd.get('fci18_height'),
+      fci18_weight: fd.get('fci18_weight'),
+      fci18_obesity: fd.get('fci18_obesity'),
+      fciTotal,
+      hads1: fd.get('hads1'),
+      hads2: fd.get('hads2'),
+      hads3: fd.get('hads3'),
+      hads4: fd.get('hads4'),
+      hads5: fd.get('hads5'),
+      hads6: fd.get('hads6'),
+      hads7: fd.get('hads7'),
+      hads8: fd.get('hads8'),
+      hads9: fd.get('hads9'),
+      hads10: fd.get('hads10'),
+      hads11: fd.get('hads11'),
+      hads12: fd.get('hads12'),
+      hads13: fd.get('hads13'),
+      hads14: fd.get('hads14'),
+      hadsAnxiety,
+      hadsDepression,
+      ...Object.fromEntries(Array.from({length:39},(_,i)=>[`pdq${i+1}`,fd.get(`pdq${i+1}`)])),
+      pdqTotal: Array.from({length:39},(_,i)=>parseInt(fd.get(`pdq${i+1}`)||0,10)).reduce((a,b)=>a+b,0),
+      fogq1: fd.get('fogq1'),
+      fogq2: fd.get('fogq2'),
+      fogq3: fd.get('fogq3'),
+      fogq4: fd.get('fogq4'),
+      fogq5: fd.get('fogq5'),
+      fogq6: fd.get('fogq6'),
+      fogqTotal: Array.from({length:6},(_,i)=>parseInt(fd.get(`fogq${i+1}`)||0,10)).reduce((a,b)=>a+b,0)
+    };
+    return resp;
+  }
 
-        function goToNextSection() {
-            goToSection(currentSection + 1);
-        }
-
-        function updateNavigation() {
-            prevSectionBtn.classList.toggle('hidden', currentSection === 0);
-            nextSectionBtn.classList.toggle('hidden', currentSection === sections.length - 1);
-            
-            if (currentSection === sections.length - 1) {
-                nextSectionBtn.innerHTML = '提交問卷<i class="fas fa-paper-plane ml-2"></i>';
-                nextSectionBtn.type = 'submit';
-            } else {
-                nextSectionBtn.innerHTML = '下一部分<i class="fas fa-arrow-right ml-2"></i>';
-                nextSectionBtn.type = 'button';
-            }
-        }
-
-        function updateSectionDots() {
-            sectionDots.forEach((dot, index) => {
-                dot.classList.toggle('active', index === currentSection);
-            });
-        }
-
-        function updateCurrentSection() {
-            const scrollPosition = window.scrollY + 100;
-            
-            for (let i = sections.length - 1; i >= 0; i--) {
-                const section = document.getElementById(`section-${sections[i]}`);
-                if (section.offsetTop <= scrollPosition) {
-                    if (currentSection !== i) {
-                        currentSection = i;
-                        updateNavigation();
-                        updateSectionDots();
-                    }
-                    break;
-                }
-            }
-        }
-
-        // 數據處理
-        function buildResponseData() {
-            const fd = new FormData(form);
-            const data = {
-                timestamp: new Date().toISOString(),
-                id: Date.now(), // 使用時間戳作為唯一ID
-                name: fd.get('name'),
-                age: fd.get('age'),
-                diagnosisYear: fd.get('diagnosisYear'),
-                educationYears: fd.get('educationYears'),
-                dominantHand: fd.get('dominantHand'),
-                implants: fd.get('implants'),
-                wheelchair: fd.get('wheelchair'),
-                medFirstTime: fd.get('medFirstTime'),
-                medDuration: fd.get('medDuration'),
-                medFrequency: fd.get('medFrequency'),
-                training1: fd.get('training1'),
-                training2: fd.get('training2'),
-                training3: fd.get('training3'),
-                
-                // FCI 數據
-                fci1_arthritis: fd.get('fci1_arthritis'),
-                fci2_osteoporosis: fd.get('fci2_osteoporosis'),
-                fci3_asthma: fd.get('fci3_asthma'),
-                fci4_copd: fd.get('fci4_copd'),
-                fci5_angina: fd.get('fci5_angina'),
-                fci6_heart_failure: fd.get('fci6_heart_failure'),
-                fci7_heart_attack: fd.get('fci7_heart_attack'),
-                fci8_neuro_disease: fd.get('fci8_neuro_disease'),
-                fci10_peripheral_vascular: fd.get('fci10_peripheral_vascular'),
-                fci11_diabetes: fd.get('fci11_diabetes'),
-                fci12_gastro: fd.get('fci12_gastro'),
-                fci16_hearing: fd.get('fci16_hearing'),
-                fci17_disc_disease: fd.get('fci17_disc_disease'),
-                fci18_height: fd.get('fci18_height'),
-                fci18_weight: fd.get('fci18_weight'),
-                fci18_obesity: fd.get('fci18_obesity'),
-                
-                // 計算 FCI 總分
-                fciTotal: 
-                    Number(fd.get('fci1_arthritis') === '是') +
-                    Number(fd.get('fci2_osteoporosis') === '是') +
-                    Number(fd.get('fci3_asthma') === '是') +
-                    Number(fd.get('fci4_copd') === '是') +
-                    Number(fd.get('fci5_angina') === '是') +
-                    Number(fd.get('fci6_heart_failure') === '是') +
-                    Number(fd.get('fci7_heart_attack') === '是') +
-                    Number(fd.get('fci8_neuro_disease') === '是') +
-                    Number(fd.get('fci10_peripheral_vascular') === '是') +
-                    Number(fd.get('fci11_diabetes') === '是') +
-                    Number(fd.get('fci12_gastro') === '是') +
-                    Number(fd.get('fci16_hearing') === '是') +
-                    Number(fd.get('fci17_disc_disease') === '是') +
-                    Number(fd.get('fci18_obesity') === '是'),
-                
-                // HADS 數據
-                hads1: fd.get('hads1'),
-                hads2: fd.get('hads2'),
-                hads3: fd.get('hads3'),
-                hads4: fd.get('hads4'),
-                hads5: fd.get('hads5'),
-                hads6: fd.get('hads6'),
-                hads7: fd.get('hads7'),
-                hads8: fd.get('hads8'),
-                hads9: fd.get('hads9'),
-                hads10: fd.get('hads10'),
-                hads11: fd.get('hads11'),
-                hads12: fd.get('hads12'),
-                hads13: fd.get('hads13'),
-                hads14: fd.get('hads14'),
-                
-                // 計算 HADS 分數
-                hadsAnxiety: 
-                    (parseInt(fd.get('hads1')) || 0) +
-                    (parseInt(fd.get('hads3')) || 0) +
-                    (parseInt(fd.get('hads5')) || 0) +
-                    (parseInt(fd.get('hads7')) || 0) +
-                    (parseInt(fd.get('hads9')) || 0) +
-                    (parseInt(fd.get('hads11')) || 0) +
-                    (parseInt(fd.get('hads13')) || 0),
-                    
-                hadsDepression: 
-                    (parseInt(fd.get('hads2')) || 0) +
-                    (parseInt(fd.get('hads4')) || 0) +
-                    (parseInt(fd.get('hads6')) || 0) +
-                    (parseInt(fd.get('hads8')) || 0) +
-                    (parseInt(fd.get('hads10')) || 0) +
-                    (parseInt(fd.get('hads12')) || 0) +
-                    (parseInt(fd.get('hads14')) || 0),
-                
-                // PDQ-39 數據
-                pdq1: fd.get('pdq1'),
-                pdq2: fd.get('pdq2'),
-                pdq3: fd.get('pdq3'),
-                pdq4: fd.get('pdq4'),
-                pdq5: fd.get('pdq5'),
-                pdq6: fd.get('pdq6'),
-                pdq7: fd.get('pdq7'),
-                pdq8: fd.get('pdq8'),
-                pdq9: fd.get('pdq9'),
-                pdq10: fd.get('pdq10'),
-                pdq11: fd.get('pdq11'),
-                pdq12: fd.get('pdq12'),
-                pdq13: fd.get('pdq13'),
-                pdq14: fd.get('pdq14'),
-                pdq15: fd.get('pdq15'),
-                pdq16: fd.get('pdq16'),
-                pdq17: fd.get('pdq17'),
-                pdq18: fd.get('pdq18'),
-                pdq19: fd.get('pdq19'),
-                pdq20: fd.get('pdq20'),
-                pdq21: fd.get('pdq21'),
-                pdq22: fd.get('pdq22'),
-                pdq23: fd.get('pdq23'),
-                pdq24: fd.get('pdq24'),
-                pdq25: fd.get('pdq25'),
-                pdq26: fd.get('pdq26'),
-                pdq27: fd.get('pdq27'),
-                pdq28: fd.get('pdq28'),
-                pdq29: fd.get('pdq29'),
-                pdq30: fd.get('pdq30'),
-                pdq31: fd.get('pdq31'),
-                pdq32: fd.get('pdq32'),
-                pdq33: fd.get('pdq33'),
-                pdq34: fd.get('pdq34'),
-                pdq35: fd.get('pdq35'),
-                pdq36: fd.get('pdq36'),
-                pdq37: fd.get('pdq37'),
-                pdq38: fd.get('pdq38'),
-                pdq39: fd.get('pdq39'),
-
-                // ... 添加其他 PDQ 問題
-                
-                pdqTotal: 
-                    (parseInt(fd.get('pdq1')) || 0) +
-                    (parseInt(fd.get('pdq2')) || 0) +
-                    (parseInt(fd.get('pdq3')) || 0) +
-                    (parseInt(fd.get('pdq4')) || 0) +
-                    (parseInt(fd.get('pdq5')) || 0) +
-                    (parseInt(fd.get('pdq6')) || 0) +
-                    (parseInt(fd.get('pdq7')) || 0) +
-                    (parseInt(fd.get('pdq8')) || 0) +
-                    (parseInt(fd.get('pdq9')) || 0) +
-                    (parseInt(fd.get('pdq10')) || 0) +
-                    (parseInt(fd.get('pdq11')) || 0) +
-                    (parseInt(fd.get('pdq12')) || 0) +
-                    (parseInt(fd.get('pdq13')) || 0) +
-                    (parseInt(fd.get('pdq14')) || 0) +
-                    (parseInt(fd.get('pdq15')) || 0) +
-                    (parseInt(fd.get('pdq16')) || 0) +
-                    (parseInt(fd.get('pdq17')) || 0) +
-                    (parseInt(fd.get('pdq18')) || 0) +
-                    (parseInt(fd.get('pdq19')) || 0) +
-                    (parseInt(fd.get('pdq20')) || 0) +
-                    (parseInt(fd.get('pdq21')) || 0) +
-                    (parseInt(fd.get('pdq22')) || 0) +
-                    (parseInt(fd.get('pdq23')) || 0) +
-                    (parseInt(fd.get('pdq24')) || 0) +
-                    (parseInt(fd.get('pdq25')) || 0) +
-                    (parseInt(fd.get('pdq26')) || 0) +
-                    (parseInt(fd.get('pdq27')) || 0) +
-                    (parseInt(fd.get('pdq28')) || 0) +
-                    (parseInt(fd.get('pdq29')) || 0) +
-                    (parseInt(fd.get('pdq30')) || 0) +
-                    (parseInt(fd.get('pdq31')) || 0) +
-                    (parseInt(fd.get('pdq32')) || 0) +
-                    (parseInt(fd.get('pdq33')) || 0) +
-                    (parseInt(fd.get('pdq34')) || 0) +
-                    (parseInt(fd.get('pdq35')) || 0) +
-                    (parseInt(fd.get('pdq36')) || 0) +
-                    (parseInt(fd.get('pdq37')) || 0) +
-                    (parseInt(fd.get('pdq38')) || 0) +
-                    (parseInt(fd.get('pdq39')) || 0),
-                
-                // FOGQ 數據
-                fogq1: fd.get('fogq1'),
-                fogq2: fd.get('fogq2'),
-                fogq3: fd.get('fogq3'),
-                fogq4: fd.get('fogq4'),
-                fogq5: fd.get('fogq5'),
-                fogq6: fd.get('fogq6'),
-                
-                fogqTotal: 
-                    (parseInt(fd.get('fogq1')) || 0) +
-                    (parseInt(fd.get('fogq2')) || 0) +
-                    (parseInt(fd.get('fogq3')) || 0) +
-                    (parseInt(fd.get('fogq4')) || 0) +
-                    (parseInt(fd.get('fogq5')) || 0) +
-                    (parseInt(fd.get('fogq6')) || 0)
-            };
-            
-            return data;
-        }
-// 修复的JSONP提交函数
-function submitViaJSONP(data) {
-    return new Promise((resolve, reject) => {
-        const callbackName = 'jsonpCallback_' + Date.now();
-        const encodedData = encodeURIComponent(JSON.stringify(data));
-        
-        // 构建URL
-        const url = `${SHEET_WEB_APP_URL}?callback=${callbackName}&data=${encodedData}`;
-        console.log('JSONP请求URL:', url);
-        
-        const script = document.createElement('script');
-        script.src = url;
-        
-        // 设置全局回调函数
-        window[callbackName] = function(response) {
-            console.log('JSONP响应:', response);
-            
-            // 清理
-            delete window[callbackName];
-            document.head.removeChild(script);
-            
-            if (response && response.ok) {
-                resolve(true);
-            } else {
-                reject(new Error(response?.error || '提交失败'));
-            }
-        };
-        
-        // 错误处理
-        script.onerror = function() {
-            delete window[callbackName];
-            if (script.parentNode) {
-                document.head.removeChild(script);
-            }
-            reject(new Error('网络请求失败'));
-        };
-        
-        document.head.appendChild(script);
-        
-        // 超时处理
-        setTimeout(() => {
-            if (window[callbackName]) {
-                delete window[callbackName];
-                if (script.parentNode) {
-                    document.head.removeChild(script);
-                }
-                reject(new Error('请求超时'));
-            }
-        }, 15000);
-    });
-}
-
-// 修复的提交处理函数
-async function handleSubmit(e) {
+// 送出 - 使用 JSONP 绕过 CORS
+  form.addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    // 验证表单
-    if (!validateForm()) {
-        showStatus('请填写所有必填字段！', 'error');
-        return;
-    }
+    const fd = new FormData(form);
+    const response = buildResponse(fd);
     
-    const submitBtn = e.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
+    console.log('准备提交数据:', response);
     
-    try {
-        // 禁用提交按钮
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>提交中...';
-        
-        const responseData = buildResponseData();
-        console.log('提交数据:', responseData);
-        
-        // 保存到本地存储
-        try {
-            responses.push(responseData);
-            localStorage.setItem('surveyResponses', JSON.stringify(responses));
-            console.log('✅ 本地存储成功');
-        } catch (storageError) {
-            console.warn('本地存储失败:', storageError);
-        }
-        
-        // 通过JSONP提交到Google Sheets
-        console.log('🔄 开始通过JSONP提交到Google Sheets...');
-        await submitViaJSONP(responseData);
-        
-        console.log('✅ 数据成功提交到Google Sheets');
-        showStatus('问卷提交成功！数据已保存到云端。', 'success');
-        
-        // 启用下载按钮
-        downloadBtn.classList.remove('hidden');
-        
-        // 可选：清空表单
-        // form.reset();
-        // clearProgress();
-        
-    } catch (error) {
-        console.error('提交失败:', error);
-        showStatus(`提交失败: ${error.message}。数据已保存在本地，请点击"下载数据"备份。`, 'error');
-    } finally {
-        // 恢复提交按钮
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
+    // 保存到本地存储
+    responses.push(response);
+    try { 
+      localStorage.setItem('surveyResponses', JSON.stringify(responses)); 
+      console.log('✅ 本地存储成功');
+      showStatus('已儲存到本地');
+    } catch {
+      alert('保存失敗，可能是存儲空間不足。請下載現有數據後清除進度。');
     }
-}
+  // 保留 localStorage 的進度（不要在提交後清除）
+  
+    if (SHEET_WEB_APP_URL) {
+      // 使用 JSONP 方式发送数据
+      console.log('🔄 开始通过 JSONP 提交到 Google Sheets...');
+      const success = await submitViaJSONP(response);
+      
+      if (success) {
+        console.log('✅ 数据成功提交到 Google Sheets');
+        showStatus('已同步到 Google Sheets');
+        alert('問卷已提交到 Google Sheets！');
+      } else {
+        console.log('⚠️ 数据仅保存在本地');
+        showStatus('雲端同步失敗，僅本地存檔', 'error');
+        alert('問卷已提交（僅本地保存），雲端同步失败。');
+      }
+    } else {
+      showStatus('問卷已保存在本地（未啟用雲端）');
+      alert('問卷已提交（僅本地保存）！');
+    }
+  
+  // 不要重設表單，保留填寫內容與 progress，使用者可隨時做修改或下載
+  });
 
-// 添加表单验证函数
-function validateForm() {
-    const requiredFields = form.querySelectorAll('[required]');
-    let isValid = true;
-    
-    requiredFields.forEach(field => {
-        if (field.type === 'radio') {
-            const name = field.name;
-            const checked = form.querySelector(`input[name="${name}"]:checked`);
-            if (!checked) {
-                isValid = false;
-                // 高亮显示未填写的必填项
-                const group = field.closest('.question-group');
-                if (group) {
-                    group.style.borderLeftColor = '#ef4444';
-                }
-            }
-        } else if (!field.value.trim()) {
-            isValid = false;
-            field.style.borderColor = '#ef4444';
+  // JSONP 提交函数
+  function submitViaJSONP(data) {
+    return new Promise((resolve) => {
+      const callbackName = 'jsonpCallback_' + Date.now();
+      const script = document.createElement('script');
+      
+      // 构建 URL - 将数据作为查询参数传递
+      const params = new URLSearchParams();
+      params.append('callback', callbackName);
+      params.append('data', JSON.stringify(data));
+      
+      script.src = SHEET_WEB_APP_URL + '?' + params.toString();
+      console.log('JSONP 请求 URL:', script.src);
+      
+      // 设置全局回调函数
+      window[callbackName] = function(response) {
+        console.log('JSONP 响应:', response);
+        if (response && response.ok) {
+          console.log('✅ JSONP 提交成功');
+          resolve(true);
+        } else {
+          console.warn('❌ JSONP 提交失败:', response);
+          resolve(false);
         }
+        
+        // 清理
+        delete window[callbackName];
+        if (script.parentNode) {
+          document.head.removeChild(script);
+        }
+      };
+      
+      // 添加错误处理
+      script.onerror = function() {
+        console.error('❌ JSONP 请求失败');
+        delete window[callbackName];
+        if (script.parentNode) {
+          document.head.removeChild(script);
+        }
+        resolve(false);
+      };
+      
+      document.head.appendChild(script);
+      
+      // 设置超时处理
+      setTimeout(() => {
+        if (window[callbackName]) {
+          console.warn('⚠️ JSONP 请求超时');
+          delete window[callbackName];
+          if (script.parentNode) {
+            document.head.removeChild(script);
+          }
+          resolve(false);
+        }
+      }, 10000); // 10秒超时
     });
-    
-    return isValid;
-}
-    
-    // 啟用下載按鈕
-    downloadBtn.classList.remove('hidden');
-}
-            // 不重置表單，保持數據可見
-        }
+ }
 
-        // 下載功能
-        function downloadData() {
-            if (responses.length === 0) {
-                showStatus('暫無數據可下載！', 'error');
-                return;
-            }
-            
-            // 創建 JavaScript 文件
-            const dataStr = `var surveyData = ${JSON.stringify(responses, null, 2)};`;
-            const blob = new Blob([dataStr], { type: 'application/javascript' });
-            const url = URL.createObjectURL(blob);
-            
-            // 創建下載鏈接
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `parkinson_survey_${new Date().toISOString().split('T')[0]}.js`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            showStatus('數據下載成功！', 'success');
-        }
+  // 下載為 .js（任意時候可下載，會輸出 window.SURVEY_DATA）
+  downloadBtn.addEventListener('click', () => {
+    if (responses.length === 0) { alert('暫無數據可下載！'); return; }
+    const content = '/* Exported survey data */\nwindow.SURVEY_DATA = ' + JSON.stringify(responses, null, 2) + ';\n';
+    const blob = new Blob([content], { type: 'application/javascript;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `parkinson_survey_${new Date().toISOString().split('T')[0]}.js`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showStatus('已下載 .js 檔案');
+  });
 
-        // 初始化應用
-        document.addEventListener('DOMContentLoaded', init);
-    </script>
+  // 初始 BMI 顯示
+  updateBMI();
+</script>
 </body>
 </html>
