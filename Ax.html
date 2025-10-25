@@ -381,6 +381,10 @@
             <!-- UPDRS-3 評估 -->
             <div class="form-section">
                 <h2>UPDRS-3 運動評估</h2>
+                <div class="form-group">
+                    <label>總分 (Total Score)</label>
+                    <input type="number" id="updrs3_total" readonly>
+                </div>
                 
                 <div class="form-group">
                     <div class="updrs-question">3a. 病患是否正接受巴金森病藥物的治療?</div>
@@ -959,9 +963,48 @@
     let timerStartTime = null;
     let timerFieldId = null;
     let timerButton = null;
+    let lastStopTime = null;  // Store the last stop time
     
     // 设置默认日期为今天
     document.getElementById('testDate').valueAsDate = new Date();
+
+    // 计算UPDRS总分
+    function calculateUPDRSTotal() {
+        const fields = [
+            'updrs3_1', 'updrs3_2',
+            'updrs3_3a', 'updrs3_3b', 'updrs3_3c', 'updrs3_3d', 'updrs3_3e',
+            'updrs3_4a', 'updrs3_4b',
+            'updrs3_5a', 'updrs3_5b',
+            'updrs3_6a', 'updrs3_6b',
+            'updrs3_7a', 'updrs3_7b',
+            'updrs3_8a', 'updrs3_8b',
+            'updrs3_9', 'updrs3_10', 'updrs3_11', 'updrs3_12', 'updrs3_13', 'updrs3_14',
+            'updrs3_15a', 'updrs3_15b',
+            'updrs3_16a', 'updrs3_16b',
+            'updrs3_17a', 'updrs3_17b', 'updrs3_17c', 'updrs3_17d', 'updrs3_17e',
+            'updrs3_18'
+        ];
+        
+        let total = 0;
+        fields.forEach(field => {
+            const value = parseInt(document.getElementById(field).value) || 0;
+            total += value;
+        });
+        
+        document.getElementById('updrs3_total').value = total;
+    }
+
+    // Add event listeners for all UPDRS fields
+    document.addEventListener('DOMContentLoaded', function() {
+        const updrsPrefixes = ['updrs3_'];
+        const selects = document.querySelectorAll('select');
+        
+        selects.forEach(select => {
+            if (updrsPrefixes.some(prefix => select.id.startsWith(prefix))) {
+                select.addEventListener('change', calculateUPDRSTotal);
+            }
+        });
+    });
     
     // 选择测试类型
     function selectTestType(type) {
@@ -986,9 +1029,15 @@
     
     // 计时器功能
     function startTimer(fieldId, button) {
+        // 如果距離上次停止計時小於1秒，忽略此次啟動
+        if (lastStopTime && (new Date().getTime() - lastStopTime) < 1000) {
+            return;
+        }
+
         // 如果已经有活跃的计时器，先停止它
         if (activeTimer) {
             stopTimer();
+            return; // 如果是停止操作，直接返回
         }
         
         // 开始新的计时器
@@ -1009,7 +1058,6 @@
         
         // 停止计时器
         clearInterval(activeTimer);
-        activeTimer = null;
         
         // 计算经过的时间
         const endTime = new Date().getTime();
@@ -1024,10 +1072,12 @@
             timerButton.classList.remove('active');
         }
         
-        // 重置变量
+        // 完全重置所有计时器相关变量
+        activeTimer = null;
         timerFieldId = null;
         timerButton = null;
         timerStartTime = null;
+        lastStopTime = new Date().getTime(); // 记录停止时间
     }
     
     function updateTimerDisplay() {
